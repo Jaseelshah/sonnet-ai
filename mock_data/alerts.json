@@ -1,0 +1,62 @@
+[
+  {
+    "id": "ALERT-2026-0451",
+    "source": "Azure AD Identity Protection",
+    "timestamp": "2026-03-24T02:14:33+00:00",
+    "severity": "HIGH",
+    "title": "Brute-force authentication attack detected",
+    "description": "462 failed login attempts against user j.adams@acmecorp.com from IP 198.51.100.47 within 8 minutes, followed by a successful login. Source IP geo-locates to a known bulletproof hosting provider. MFA was not enforced on this account.",
+    "source_ip": "198.51.100.47",
+    "dest_ip": "10.0.1.50",
+    "user": "j.adams@acmecorp.com",
+    "hostname": "DC-EAST-01"
+  },
+  {
+    "id": "ALERT-2026-0452",
+    "source": "CrowdStrike Falcon",
+    "timestamp": "2026-03-24T03:27:11+00:00",
+    "severity": "CRITICAL",
+    "title": "Lateral movement via PsExec detected",
+    "description": "Process psexec.exe spawned on WORKSTATION-117 by user svc_deploy, initiating remote service creation on 4 internal hosts (10.0.2.15, 10.0.2.16, 10.0.2.20, 10.0.3.5). The service account svc_deploy is not authorised for interactive use. Parent process is cmd.exe launched from an abnormal directory (C:\\Users\\Public\\Downloads).",
+    "source_ip": "10.0.2.10",
+    "dest_ip": "10.0.2.15",
+    "user": "svc_deploy",
+    "hostname": "WORKSTATION-117"
+  },
+  {
+    "id": "ALERT-2026-0453",
+    "source": "Microsoft Defender for Endpoint",
+    "timestamp": "2026-03-24T04:05:49+00:00",
+    "severity": "CRITICAL",
+    "title": "Privilege escalation via token manipulation",
+    "description": "Process whoami.exe executed with SYSTEM privileges after token impersonation detected on SRV-APP-03. A low-privilege service account (svc_webapp) used SeDebugPrivilege to duplicate an SYSTEM-level token from lsass.exe. This technique is consistent with tools such as Potato or PrintSpoofer.",
+    "source_ip": "",
+    "dest_ip": "",
+    "user": "svc_webapp",
+    "hostname": "SRV-APP-03"
+  },
+  {
+    "id": "ALERT-2026-0454",
+    "source": "Palo Alto Networks NGFW",
+    "timestamp": "2026-03-24T05:42:18+00:00",
+    "severity": "HIGH",
+    "title": "Anomalous data exfiltration to external endpoint",
+    "description": "Host 10.0.5.22 (FILE-SVR-02) transferred 4.7 GB to external IP 203.0.113.88 over HTTPS in a 12-minute window during non-business hours (05:30-05:42 UTC). DNS lookups resolved to a domain registered 48 hours ago (xfer-cdn-node9[.]com). The volume exceeds the host's 90-day baseline by 47x.",
+    "source_ip": "10.0.5.22",
+    "dest_ip": "203.0.113.88",
+    "user": "",
+    "hostname": "FILE-SVR-02"
+  },
+  {
+    "id": "ALERT-2026-0455",
+    "source": "CrowdStrike Falcon",
+    "timestamp": "2026-03-24T06:18:02+00:00",
+    "severity": "CRITICAL",
+    "title": "Malware execution – Cobalt Strike beacon detected",
+    "description": "A Cobalt Strike beacon payload was identified in memory on WORKSTATION-204. The process rundll32.exe loaded a reflective DLL (sha256: a1b2c3d4e5f6…) matching known Cobalt Strike malleable C2 profile signatures. The beacon is calling back to 192.0.2.33:443 every 60 seconds with jitter. The initial dropper was delivered via a macro-enabled Excel document (Q1-Financial-Report.xlsm) opened by user m.chen@acmecorp.com.",
+    "source_ip": "10.0.4.88",
+    "dest_ip": "192.0.2.33",
+    "user": "m.chen@acmecorp.com",
+    "hostname": "WORKSTATION-204"
+  }
+]
