@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   BarChart,
   Bar,
@@ -22,14 +22,36 @@ export default function ReportsPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [tenant, setTenant] = useState<string>("");
 
+  // Sync tenant from localStorage on mount and listen for sidebar changes
   useEffect(() => {
-    fetch("/api/stats")
+    setTenant(localStorage.getItem("sonnet-ai-tenant") ?? "");
+
+    function onTenantChanged(e: Event) {
+      setTenant((e as CustomEvent<{ tenant: string }>).detail.tenant);
+    }
+
+    window.addEventListener("tenant-changed", onTenantChanged);
+    return () => window.removeEventListener("tenant-changed", onTenantChanged);
+  }, []);
+
+  const fetchStats = useCallback(() => {
+    const params = new URLSearchParams();
+    if (tenant) params.set("tenant", tenant);
+
+    setLoading(true);
+    setError(false);
+    fetch(`/api/stats?${params}`)
       .then((r) => r.json())
       .then(setStats)
       .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, []);
+  }, [tenant]);
+
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
 
   if (loading) {
     return (
@@ -59,7 +81,9 @@ export default function ReportsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">Reports</h1>
-          <p className="text-sm text-gray-500 mt-1">Triage analytics and insights</p>
+          <p className="text-sm text-gray-500 mt-1">
+            {tenant ? `${tenant} — analytics and insights` : "Triage analytics and insights"}
+          </p>
         </div>
       </div>
 

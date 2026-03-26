@@ -26,7 +26,7 @@ if sys.stdout.encoding and sys.stdout.encoding.lower().startswith("cp"):
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
-from config.settings import LOG_DIR, LOG_FORMAT, LOG_LEVEL, MOCK_DATA_DIR, validate
+from config.settings import LOG_DIR, LOG_FORMAT, LOG_LEVEL, MOCK_DATA_DIR, TENANTS, validate
 from enrichment.virustotal import enrich_alert, format_enrichment_summary
 from models.alert import Alert
 from models.triage import TriageResult
@@ -83,6 +83,8 @@ def process_alerts(alerts: list[Alert]) -> list[TriageResult]:
             enrichment_summary = format_enrichment_summary(vt_results)
 
             result = agent.triage(alert, enrichment_context)
+            if TENANTS:
+                result.tenant_id = TENANTS[hash(alert.id) % len(TENANTS)]
             results.append(result)
 
             # Print the report to console (with enrichment)

@@ -1,9 +1,17 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { readJSON, triageResultsPath, rawAlertsPath } from "@/lib/data";
 
-export async function GET() {
-  const triageResults = await readJSON(triageResultsPath);
+export async function GET(request: NextRequest) {
+  const tenant = request.nextUrl.searchParams.get("tenant");
+
+  const allTriageResults = await readJSON(triageResultsPath);
   const rawAlerts = await readJSON(rawAlertsPath);
+
+  const triageResults = tenant
+    ? (allTriageResults as Record<string, unknown>[]).filter(
+        (tr) => tr.tenant_id === tenant
+      )
+    : (allTriageResults as Record<string, unknown>[]);
 
   if (triageResults.length === 0) {
     return NextResponse.json({

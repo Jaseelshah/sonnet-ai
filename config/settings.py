@@ -48,6 +48,10 @@ ELASTIC_VERIFY_SSL: bool = os.getenv("ELASTIC_VERIFY_SSL", "false").lower() == "
 _cj_raw: str = os.getenv("CROWN_JEWELS", "")
 CROWN_JEWELS: set[str] = {h.strip().upper() for h in _cj_raw.split(",") if h.strip()}
 
+# ── Multi-tenant ─────────────────────────────────────────────────────────
+_tenants_raw: str = os.getenv("TENANTS", "")
+TENANTS: list[str] = [t.strip() for t in _tenants_raw.split(",") if t.strip()]
+
 # ── Triage thresholds ───────────────────────────────────────────────────────
 ESCALATION_PRIORITIES: set[str] = {"CRITICAL", "HIGH"}
 FALSE_POSITIVE_THRESHOLD: float = float(os.getenv("FALSE_POSITIVE_THRESHOLD", "0.7"))

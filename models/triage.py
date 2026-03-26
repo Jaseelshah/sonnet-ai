@@ -30,6 +30,7 @@ class TriageResult:
     recommended_actions: list[str]
     escalate: bool
     false_positive_likelihood: float  # 0.0 – 1.0
+    tenant_id: str = ""
     triaged_at: datetime | None = None
 
     def __post_init__(self) -> None:
@@ -61,6 +62,7 @@ class TriageResult:
             recommended_actions=data.get("recommended_actions", []),
             escalate=bool(data.get("escalate", False)),
             false_positive_likelihood=float(data.get("false_positive_likelihood", 0.0)),
+            tenant_id=data.get("tenant_id", ""),
         )
 
     # ── Serialisation ────────────────────────────────────────────────────

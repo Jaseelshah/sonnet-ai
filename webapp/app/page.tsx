@@ -23,11 +23,27 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [tenant, setTenant] = useState<string>("");
   const initialLoad = useRef(true);
 
+  // Sync tenant from localStorage on mount and listen for sidebar changes
+  useEffect(() => {
+    setTenant(localStorage.getItem("sonnet-ai-tenant") ?? "");
+
+    function onTenantChanged(e: Event) {
+      setTenant((e as CustomEvent<{ tenant: string }>).detail.tenant);
+    }
+
+    window.addEventListener("tenant-changed", onTenantChanged);
+    return () => window.removeEventListener("tenant-changed", onTenantChanged);
+  }, []);
+
   const fetchStats = useCallback(async () => {
+    const params = new URLSearchParams();
+    if (tenant) params.set("tenant", tenant);
+
     try {
-      const r = await fetch("/api/stats");
+      const r = await fetch(`/api/stats?${params}`);
       const data = await r.json();
       setStats(data);
       setError(false);
@@ -39,7 +55,14 @@ export default function DashboardPage() {
         initialLoad.current = false;
       }
     }
-  }, []);
+  }, [tenant]);
+
+  // Reset loading state when tenant changes so spinner shows
+  useEffect(() => {
+    initialLoad.current = true;
+    setLoading(true);
+    setError(false);
+  }, [tenant]);
 
   useEffect(() => {
     fetchStats();
@@ -83,7 +106,9 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-        <p className="text-sm text-gray-500 mt-1">Sonnet AI triage overview</p>
+        <p className="text-sm text-gray-500 mt-1">
+          {tenant ? `${tenant} — triage overview` : "Sonnet AI triage overview"}
+        </p>
       </div>
 
       {/* Stats row */}

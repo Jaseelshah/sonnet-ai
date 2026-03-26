@@ -11,7 +11,20 @@ export default function AlertsPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [priorityFilter, setPriorityFilter] = useState<string>("ALL");
+  const [tenant, setTenant] = useState<string>("");
   const initialLoad = useRef(true);
+
+  // Sync tenant from localStorage on mount and listen for sidebar changes
+  useEffect(() => {
+    setTenant(localStorage.getItem("sonnet-ai-tenant") ?? "");
+
+    function onTenantChanged(e: Event) {
+      setTenant((e as CustomEvent<{ tenant: string }>).detail.tenant);
+    }
+
+    window.addEventListener("tenant-changed", onTenantChanged);
+    return () => window.removeEventListener("tenant-changed", onTenantChanged);
+  }, []);
 
   // Debounce: update debouncedSearch 300 ms after the user stops typing.
   useEffect(() => {
@@ -23,6 +36,7 @@ export default function AlertsPage() {
     const params = new URLSearchParams();
     if (debouncedSearch) params.set("search", debouncedSearch);
     if (priorityFilter !== "ALL") params.set("priority", priorityFilter);
+    if (tenant) params.set("tenant", tenant);
 
     try {
       const r = await fetch(`/api/alerts?${params}`);
@@ -37,14 +51,14 @@ export default function AlertsPage() {
         initialLoad.current = false;
       }
     }
-  }, [debouncedSearch, priorityFilter]);
+  }, [debouncedSearch, priorityFilter, tenant]);
 
   // Reset initial-load flag whenever filters change so the spinner shows again
   useEffect(() => {
     initialLoad.current = true;
     setLoading(true);
     setError(false);
-  }, [debouncedSearch, priorityFilter]);
+  }, [debouncedSearch, priorityFilter, tenant]);
 
   useEffect(() => {
     fetchAlerts();
@@ -59,7 +73,9 @@ export default function AlertsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-white">Alerts Feed</h1>
-        <p className="text-sm text-gray-500 mt-1">All triaged security alerts</p>
+        <p className="text-sm text-gray-500 mt-1">
+          {tenant ? `${tenant} — triaged alerts` : "All triaged security alerts"}
+        </p>
       </div>
 
       {/* Filters */}

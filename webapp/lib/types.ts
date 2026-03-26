@@ -24,6 +24,7 @@ export interface TriageResult {
   recommended_actions: string[];
   escalate: boolean;
   false_positive_likelihood: number;
+  tenant_id?: string;
   triaged_at: string;
 }
 

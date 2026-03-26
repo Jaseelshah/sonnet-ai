@@ -5,6 +5,7 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const priority = searchParams.get("priority");
   const search = searchParams.get("search")?.toLowerCase();
+  const tenant = searchParams.get("tenant");
 
   const triageResults = await readJSON(triageResultsPath);
   const rawAlerts = await readJSON(rawAlertsPath);
@@ -29,6 +30,9 @@ export async function GET(request: NextRequest) {
         (a.alert_id as string)?.toLowerCase().includes(search) ||
         (a.description as string)?.toLowerCase().includes(search)
     );
+  }
+  if (tenant) {
+    alerts = alerts.filter((a) => a.tenant_id === tenant);
   }
 
   alerts.sort(
