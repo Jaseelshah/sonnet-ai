@@ -14,11 +14,17 @@ Supported alert sources
 from __future__ import annotations
 
 import argparse
+import io
 import json
 import logging
 import sys
 import time
 from pathlib import Path
+
+# Ensure stdout handles Unicode on Windows (box-drawing chars, emojis, etc.)
+if sys.stdout.encoding and sys.stdout.encoding.lower().startswith("cp"):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 from config.settings import LOG_DIR, LOG_FORMAT, LOG_LEVEL, MOCK_DATA_DIR, validate
 from enrichment.virustotal import enrich_alert, format_enrichment_summary

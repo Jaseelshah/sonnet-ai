@@ -44,6 +44,10 @@ ELASTIC_PASSWORD: str = os.getenv("ELASTIC_PASSWORD", "")
 ELASTIC_INDEX: str = os.getenv("ELASTIC_INDEX", "sonnet-ai-alerts")
 ELASTIC_VERIFY_SSL: bool = os.getenv("ELASTIC_VERIFY_SSL", "false").lower() == "true"
 
+# ── Crown Jewels ──────────────────────────────────────────────────────────
+_cj_raw: str = os.getenv("CROWN_JEWELS", "")
+CROWN_JEWELS: set[str] = {h.strip().upper() for h in _cj_raw.split(",") if h.strip()}
+
 # ── Triage thresholds ───────────────────────────────────────────────────────
 ESCALATION_PRIORITIES: set[str] = {"CRITICAL", "HIGH"}
 FALSE_POSITIVE_THRESHOLD: float = float(os.getenv("FALSE_POSITIVE_THRESHOLD", "0.7"))

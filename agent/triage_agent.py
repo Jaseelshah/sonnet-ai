@@ -11,9 +11,11 @@ from typing import Any
 import anthropic
 
 from agent.prompt import SYSTEM_PROMPT, build_user_prompt
-from config.settings import ANTHROPIC_API_KEY, ANTHROPIC_MAX_TOKENS, ANTHROPIC_MODEL
+from config.settings import ANTHROPIC_API_KEY, ANTHROPIC_MAX_TOKENS, ANTHROPIC_MODEL, CROWN_JEWELS
 from models.alert import Alert
-from models.triage import TriageResult
+from models.triage import Priority, TriageResult
+
+_ESCALATION_ORDER = [Priority.LOW, Priority.MEDIUM, Priority.HIGH, Priority.CRITICAL]
 
 logger = logging.getLogger(__name__)
 
@@ -43,12 +45,33 @@ class TriageAgent:
         raw_response = self._call_api(user_prompt)
         result = self._parse_response(raw_response, alert.id)
 
+        # Crown Jewel escalation
+        if CROWN_JEWELS and alert.hostname.upper() in CROWN_JEWELS:
+            result = self._apply_crown_jewel_escalation(result, alert.hostname)
+
         logger.info(
             "Alert %s triaged → %s (confidence %.0f%%, escalate=%s)",
             alert.id,
             result.priority.value,
             result.confidence * 100,
             result.escalate,
+        )
+        return result
+
+    @staticmethod
+    def _apply_crown_jewel_escalation(result: TriageResult, hostname: str) -> TriageResult:
+        """Bump priority one level and flag the summary for Crown Jewel assets."""
+        old_priority = result.priority
+        idx = _ESCALATION_ORDER.index(old_priority)
+        new_priority = _ESCALATION_ORDER[min(idx + 1, len(_ESCALATION_ORDER) - 1)]
+
+        result.priority = new_priority
+        result.escalate = new_priority in (Priority.CRITICAL, Priority.HIGH)
+        result.summary += f" \u26a0\ufe0f Crown Jewel asset ({hostname}) \u2014 priority escalated from {old_priority.value} to {new_priority.value}."
+
+        logger.info(
+            "Crown Jewel escalation: %s on %s — %s → %s",
+            result.alert_id, hostname, old_priority.value, new_priority.value,
         )
         return result
 
