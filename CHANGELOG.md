@@ -4,6 +4,30 @@ All notable changes to Sonnet AI are documented in this file.
 
 ---
 
+## Sprint 2 — Human-in-the-Loop + Executive Reports
+
+- **Analyst feedback system** — Confirm or correct triage verdicts on the alert detail page with priority override and analyst notes
+- **Feedback tracking** — Per-alert feedback stored in `logs/feedback.json`, surfaced as Confirmed/Corrected/Pending badges in the alerts table
+- **Feedback coverage metric** — Dashboard shows percentage of alerts that have been analyst-reviewed
+- **Executive PDF report** (`/reports/executive`) — Printable CISO-ready summary with KPI cards, priority breakdowns, top MITRE tactics, time saved estimates, and feedback accuracy rates
+- **Print-optimised CSS** — Clean white-background layout for PDF export via `window.print()`
+
+## Sprint 1 — Authentication + Multi-Tenancy
+
+- **JWT authentication** — Secure login page at `/login` with httpOnly cookie-based sessions
+- **Edge middleware** — All dashboard routes protected; unauthenticated requests redirect to login
+- **Logout** — Sign out button in sidebar clears session and redirects to login
+- **Multi-tenant client selector** — Sidebar dropdown for switching between tenants (stored in localStorage)
+- **Tenant-aware filtering** — Dashboard stats, alerts feed, and reports filter by selected tenant
+- **Tenants API** — `GET /api/tenants` returns configured tenant list from environment
+- **Deterministic tenant assignment** — Each alert is assigned to a tenant via `hash(alert.id) % len(TENANTS)`
+
+## Crown Jewels Asset Escalation
+
+- **Crown Jewel detection** — Configurable `CROWN_JEWELS` environment variable listing high-value hostnames
+- **Automatic priority escalation** — Alerts targeting Crown Jewel assets are bumped one priority level (e.g. HIGH to CRITICAL)
+- **Summary annotation** — Escalated alerts include a Crown Jewel warning in the triage summary
+
 ## Phase 6 — Live Elasticsearch SIEM Integration
 
 - **Virtualized SIEM connector** — Docker Compose environment with Elasticsearch 8.11 and Kibana 8.11 for local SIEM simulation

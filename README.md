@@ -16,6 +16,11 @@ Built for MSSPs, in-house SOC teams, and IT security managers who need to scale 
 - **MITRE ATT&CK Mapping** — Every triaged alert is mapped to the most relevant ATT&CK tactic and technique for standardised threat classification.
 - **IOC Enrichment** — Extracts IPs, domains, and file hashes from alerts and queries VirusTotal for reputation data before triage.
 - **Live SIEM Integration** — Polls Elasticsearch for new alerts in real time, with a built-in generator that simulates 8 attack types using Elastic Common Schema (ECS) fields.
+- **Crown Jewel Asset Escalation** — Configurable list of high-value assets (domain controllers, financial servers). Alerts targeting Crown Jewels are automatically escalated one priority level.
+- **JWT Authentication** — Secure login with httpOnly cookie-based sessions. All dashboard routes are protected by edge middleware.
+- **Multi-Tenant Support** — MSSP-ready client selector with per-tenant filtered views across all dashboard pages, stats, and reports.
+- **Human-in-the-Loop Feedback** — Analysts can confirm or correct triage verdicts. Feedback is tracked per alert and surfaced as accuracy metrics.
+- **Executive PDF Reports** — Printable CISO-ready summary with KPIs, priority breakdowns, MITRE tactics, time saved estimates, and feedback accuracy rates.
 - **Slack Notifications** — Posts triage verdicts to a Slack channel via webhook so analysts see results the moment they land.
 - **Jira Ticket Creation** — Automatically creates Jira issues for escalated CRITICAL/HIGH alerts with full triage context attached.
 - **Web Dashboard** — Real-time Next.js dashboard with stat cards, priority charts, MITRE donut breakdowns, alert drill-down, and a settings panel.
@@ -28,16 +33,16 @@ Built for MSSPs, in-house SOC teams, and IT security managers who need to scale 
 
 ```
 ┌──────────────┐    ┌──────────────┐    ┌───────────────┐
-│Elasticsearch │───▶│  Sonnet AI   │───▶│  Slack / Jira │
+│Elasticsearch │───>│  Sonnet AI   │───>│  Slack / Jira │
 │  SIEM Index  │    │  Python Agent│    │  (outputs)    │
 └──────────────┘    └──────┬───────┘    └───────────────┘
-       ▲                   │
-┌──────┴───────┐    ┌──────▼───────┐
+       ^                   │
+┌──────┴───────┐    ┌──────v───────┐
 │    Alert     │    │   Claude API │
 │  Generator   │    │   (triage)   │
 └──────────────┘    └──────┬───────┘
                            │
-                    ┌──────▼───────┐    ┌───────────────┐
+                    ┌──────v───────┐    ┌───────────────┐
                     │VirusTotal API│    │  Next.js Web  │
                     │ (enrichment) │    │  Dashboard    │
                     └──────────────┘    └───────────────┘
@@ -84,6 +89,13 @@ cp .env.example .env
 # Edit .env with your API keys (see Environment Variables below)
 ```
 
+Also copy dashboard credentials into the webapp directory:
+
+```bash
+# Create webapp/.env.local with DASHBOARD_EMAIL, DASHBOARD_PASSWORD, JWT_SECRET, TENANTS
+# (Next.js loads .env.local from its own directory)
+```
+
 ### 3. Run the Python triage agent
 
 ```bash
@@ -98,10 +110,12 @@ In mock mode, the agent will:
 
 1. Load alerts from `mock_data/alerts.json`
 2. Extract and enrich IOCs via VirusTotal (if enabled)
-3. Send each alert to Claude for AI triage
-4. Print formatted triage reports to the console
-5. Send Slack notifications and create Jira tickets (if enabled)
-6. Save results to `logs/triage_results.json`
+3. Send each alert to Claude for triage
+4. Apply Crown Jewel escalation if the alert targets a high-value asset
+5. Assign a tenant (if multi-tenancy is configured)
+6. Print formatted triage reports to the console
+7. Send Slack notifications and create Jira tickets (if enabled)
+8. Save results to `logs/triage_results.json`
 
 ### 4. Start the web dashboard
 
@@ -110,15 +124,7 @@ cd webapp
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to view the dashboard. It reads triage results from `logs/triage_results.json` and displays them in real time.
-
-**Production build:**
-
-```bash
-cd webapp
-npm run build
-npm start
-```
+Open [http://localhost:3000](http://localhost:3000) and log in with your configured credentials (default: `admin@sonnet-ai.com`).
 
 Or use the convenience scripts:
 
@@ -161,25 +167,33 @@ The generator simulates 8 attack types: brute force, lateral movement, privilege
 
 ## Web Dashboard
 
-The dashboard is a Next.js 14 app with five pages:
+The dashboard is a Next.js 14 app with JWT authentication and multi-tenant support:
 
 | Page | Route | Description |
 |------|-------|-------------|
-| **Dashboard** | `/` | Stat cards, priority bar chart, MITRE donut chart, recent alerts table |
-| **Alerts Feed** | `/alerts` | Full searchable, filterable alert list |
-| **Alert Detail** | `/alerts/[id]` | Deep-dive view with confidence bars, MITRE mapping, actions, raw JSON |
+| **Login** | `/login` | Secure login with email and password |
+| **Dashboard** | `/` | Stat cards, priority bar chart, MITRE donut chart, recent alerts, feedback coverage |
+| **Alerts Feed** | `/alerts` | Searchable, filterable alert list with review status badges |
+| **Alert Detail** | `/alerts/[id]` | Deep-dive view with confidence bars, MITRE mapping, analyst feedback buttons |
 | **Reports** | `/reports` | Summary statistics with priority and MITRE technique charts |
+| **Executive Report** | `/reports/executive` | Printable CISO-ready PDF with KPIs and time saved estimates |
 | **Settings** | `/settings` | Configure model, integrations, and triage thresholds |
 
 ### API Routes
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/stats` | GET | Dashboard statistics (totals, breakdowns, averages) |
-| `/api/alerts` | GET | Alerts list with `?search=` and `?priority=` filters |
+| `/api/auth/login` | POST | Authenticate and receive JWT token |
+| `/api/auth/logout` | POST | Clear authentication cookie |
+| `/api/auth/me` | GET | Check current authentication status |
+| `/api/stats` | GET | Dashboard statistics with `?tenant=` filter |
+| `/api/alerts` | GET | Alerts list with `?search=`, `?priority=`, `?tenant=` filters |
 | `/api/alerts/[id]` | GET | Single alert with full triage details |
-| `/api/settings` | GET | Current configuration (keys masked) |
-| `/api/settings` | POST | Update configuration |
+| `/api/alerts/[id]/feedback` | GET/POST | Read or submit analyst feedback for an alert |
+| `/api/feedback` | GET | All feedback entries as a map |
+| `/api/tenants` | GET | List of configured tenant names |
+| `/api/reports/executive` | GET | Executive summary data with `?tenant=` filter |
+| `/api/settings` | GET/POST | Read or update configuration |
 
 ---
 
@@ -201,6 +215,11 @@ Create a `.env` file in the project root (see `.env.example`):
 | `JIRA_EMAIL` | If Jira enabled | — | Jira account email |
 | `JIRA_API_TOKEN` | If Jira enabled | — | Jira API token |
 | `JIRA_PROJECT_KEY` | If Jira enabled | — | Jira project key |
+| `CROWN_JEWELS` | No | — | Comma-separated high-value hostnames (e.g. `DC01,FINANCE-SRV`) |
+| `DASHBOARD_EMAIL` | No | — | Dashboard login email |
+| `DASHBOARD_PASSWORD` | No | — | Dashboard login password |
+| `JWT_SECRET` | No | — | Secret key for signing JWT tokens |
+| `TENANTS` | No | — | Comma-separated tenant names (e.g. `Acme Corp,TechStart`) |
 | `ELASTIC_URL` | No | `http://localhost:9200` | Elasticsearch base URL |
 | `ELASTIC_USERNAME` | No | — | Elasticsearch username (if auth enabled) |
 | `ELASTIC_PASSWORD` | No | — | Elasticsearch password (if auth enabled) |
@@ -240,7 +259,7 @@ sonnet-ai/
 │
 ├── models/
 │   ├── alert.py                 # Normalised security alert dataclass
-│   └── triage.py                # Triage result with priority, MITRE mapping
+│   └── triage.py                # Triage result with priority, MITRE mapping, tenant
 │
 ├── parsers/
 │   └── elastic.py               # Elasticsearch poller — ECS-to-Alert conversion
@@ -274,31 +293,52 @@ sonnet-ai/
 │
 ├── logs/                        # Runtime outputs (gitignored)
 │   ├── sentinel.log
-│   └── triage_results.json
+│   ├── triage_results.json
+│   └── feedback.json
 │
 └── webapp/                      # Next.js 14 web dashboard
     ├── package.json
+    ├── middleware.ts             # JWT auth guard for all routes
     ├── app/
-    │   ├── layout.tsx           # Root layout with sidebar navigation
-    │   ├── page.tsx             # Dashboard home — stats, charts, recent alerts
-    │   ├── globals.css
+    │   ├── layout.tsx           # Root layout with auth-aware shell
+    │   ├── page.tsx             # Dashboard — stats, charts, feedback coverage
+    │   ├── globals.css          # Global styles + print CSS
+    │   ├── login/page.tsx       # Secure login page
     │   ├── alerts/
-    │   │   ├── page.tsx         # Searchable, filterable alerts feed
-    │   │   └── [id]/page.tsx    # Alert detail view
-    │   ├── reports/page.tsx     # Reports with summary charts
+    │   │   ├── page.tsx         # Searchable alerts feed with review badges
+    │   │   └── [id]/page.tsx    # Alert detail + analyst feedback buttons
+    │   ├── reports/
+    │   │   ├── page.tsx         # Reports with summary charts
+    │   │   └── executive/page.tsx  # Printable CISO executive summary
     │   ├── settings/page.tsx    # Configuration panel
     │   └── api/
-    │       ├── stats/route.ts   # GET /api/stats
+    │       ├── auth/
+    │       │   ├── login/route.ts   # POST /api/auth/login
+    │       │   ├── logout/route.ts  # POST /api/auth/logout
+    │       │   └── me/route.ts      # GET /api/auth/me
+    │       ├── stats/route.ts       # GET /api/stats (tenant-aware)
     │       ├── alerts/
-    │       │   ├── route.ts     # GET /api/alerts (with filters)
-    │       │   └── [id]/route.ts# GET /api/alerts/[id]
-    │       └── settings/route.ts# GET/POST /api/settings
+    │       │   ├── route.ts         # GET /api/alerts (with filters)
+    │       │   └── [id]/
+    │       │       ├── route.ts     # GET /api/alerts/[id]
+    │       │       └── feedback/route.ts  # GET/POST analyst feedback
+    │       ├── feedback/route.ts    # GET /api/feedback (all entries)
+    │       ├── tenants/route.ts     # GET /api/tenants
+    │       ├── reports/
+    │       │   └── executive/route.ts  # GET /api/reports/executive
+    │       └── settings/route.ts    # GET/POST /api/settings
     ├── components/
-    │   ├── Sidebar.tsx          # Left navigation with status indicator
-    │   ├── AlertsTable.tsx      # Reusable alerts table
+    │   ├── AppShell.tsx         # Main layout with sidebar
+    │   ├── AuthShell.tsx        # Auth-aware layout wrapper
+    │   ├── Sidebar.tsx          # Left navigation with tenant selector
+    │   ├── TenantSelector.tsx   # Multi-tenant client dropdown
+    │   ├── AlertsTable.tsx      # Reusable alerts table with review column
+    │   ├── FeedbackBadge.tsx    # Confirmed/Corrected/Pending badge
     │   ├── PriorityBadge.tsx    # Colour-coded priority pill
     │   └── StatCard.tsx         # Dashboard stat card
     └── lib/
+        ├── auth.ts              # JWT token creation and verification
+        ├── data.ts              # File I/O with caching
         ├── types.ts             # TypeScript interfaces
         └── utils.ts             # Utility functions
 ```
@@ -322,17 +362,6 @@ sonnet-ai/
 ### Settings
 ![Settings](docs/screenshots/settings.png)
 
-<!-- Add these when screenshots are available:
-### Terminal — Triage Run
-![Terminal](docs/screenshots/terminal-triage.png)
-
-### Slack Notifications
-![Slack](docs/screenshots/slack-notification.png)
-
-### Jira Tickets
-![Jira](docs/screenshots/jira-ticket.png)
--->
-
 ---
 
 ## Tech Stack
@@ -344,6 +373,7 @@ sonnet-ai/
 | SIEM | Elasticsearch 8.11, Kibana 8.11 (Docker) |
 | IOC Enrichment | VirusTotal API v3 |
 | Web Dashboard | Next.js 14, React 18, TypeScript, Tailwind CSS |
+| Authentication | JWT (jose), httpOnly cookies, edge middleware |
 | Charts | Recharts |
 | Notifications | Slack Webhooks |
 | Ticketing | Jira REST API v3 |
