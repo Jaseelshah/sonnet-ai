@@ -26,6 +26,9 @@ Guidelines:
   your assessment: a MALICIOUS verdict from multiple engines should raise \
   priority and lower false-positive likelihood; a CLEAN verdict may lower \
   priority. Cite specific VT findings in your summary when relevant.
+• When previous analyst corrections are provided, learn from them: if \
+  analysts have consistently corrected a certain type of alert to a \
+  different priority, adjust your assessment accordingly.
 
 You MUST respond with ONLY a valid JSON object matching this schema – no \
 markdown fences, no commentary:
@@ -47,17 +50,27 @@ markdown fences, no commentary:
 def build_user_prompt(
     alert_context: str,
     enrichment_context: str = "",
+    corrections_context: str = "",
 ) -> str:
     """Wrap the alert context into the user message sent to Claude.
 
     When VirusTotal enrichment data is available it is appended so the
     model can factor IOC reputation into its triage decision.
+
+    When analyst corrections are available they are injected as few-shot
+    examples between the alert context and enrichment data.
     """
     parts = [
         "Triage the following security alert and respond with the JSON "
         "triage result.\n",
         alert_context,
     ]
+    if corrections_context:
+        parts.append(
+            "\n── Previous Analyst Corrections (learn from these) ─────────\n"
+            + corrections_context
+            + "\n─────────────────────────────────────────────────────────────"
+        )
     if enrichment_context:
         parts.append(
             "\n── IOC Enrichment (VirusTotal) ─────────────────────────────\n"

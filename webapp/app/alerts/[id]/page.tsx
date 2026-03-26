@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { TriagedAlert, AlertFeedback, Priority } from "@/lib/types";
+import { TriagedAlert, AlertFeedback, Priority, ResponseActionEntry } from "@/lib/types";
 import { PriorityBadge } from "@/components/PriorityBadge";
 import { cn, PRIORITY_BG_CLASSES } from "@/lib/utils";
 
@@ -184,6 +184,10 @@ export default function AlertDetailPage() {
   const [showCorrectionModal, setShowCorrectionModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  // Response actions state
+  const [responseActions, setResponseActions] = useState<ResponseActionEntry[]>([]);
+  const [respondingAction, setRespondingAction] = useState<string | null>(null);
+
   // Fetch alert data
   useEffect(() => {
     fetch(`/api/alerts/${id}`)
@@ -200,6 +204,58 @@ export default function AlertDetailPage() {
       .then((data) => setFeedback(data.feedback ?? null))
       .catch(console.error);
   }, [id]);
+
+  // Fetch existing response actions for this alert
+  useEffect(() => {
+    fetch(`/api/alerts/${id}/respond`)
+      .then((r) => r.json())
+      .then((data) => setResponseActions(data.actions ?? []))
+      .catch(console.error);
+  }, [id]);
+
+  async function triggerResponseAction(action: string) {
+    setRespondingAction(action);
+    try {
+      const r = await fetch(`/api/alerts/${id}/respond`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const data = await r.json();
+      if (data.success) {
+        setResponseActions((prev) => [...prev, data.action]);
+      }
+    } catch (err) {
+      console.error("Failed to trigger response action", err);
+    } finally {
+      setRespondingAction(null);
+    }
+  }
+
+  function relativeTime(timestamp: string): string {
+    const diffMs = Date.now() - new Date(timestamp).getTime();
+    const diffMins = Math.floor(diffMs / 60_000);
+    if (diffMins < 1) return "just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d ago`;
+  }
+
+  const ACTION_LABELS: Record<string, string> = {
+    isolate_host: "Isolate Host",
+    block_ip: "Block IP",
+    reset_password: "Reset Credentials",
+    dismiss: "Dismiss Alert",
+  };
+
+  const ACTION_ICONS: Record<string, string> = {
+    isolate_host: "🔒",
+    block_ip: "🛡️",
+    reset_password: "🔑",
+    dismiss: "✕",
+  };
 
   async function submitFeedback(
     status: "confirmed" | "corrected",
@@ -414,6 +470,60 @@ export default function AlertDetailPage() {
               </li>
             ))}
           </ul>
+        </div>
+
+        {/* Response Actions */}
+        <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-5">
+          <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-3">
+            Response Actions
+          </h2>
+
+          {/* Simulation mode banner */}
+          <div className="text-xs text-amber-400 bg-amber-500/5 border border-amber-500/20 rounded-lg px-3 py-2 mb-4">
+            ⚠ Response actions are in simulation mode — connect your EDR/firewall APIs to enable live response
+          </div>
+
+          {/* Action buttons — 2x2 grid */}
+          <div className="grid grid-cols-2 gap-3">
+            {(["isolate_host", "block_ip", "reset_password", "dismiss"] as const).map((action) => (
+              <button
+                key={action}
+                type="button"
+                onClick={() => triggerResponseAction(action)}
+                disabled={respondingAction !== null}
+                className="flex items-center gap-2 bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-sm text-gray-300 hover:border-gray-600 hover:text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {respondingAction === action ? (
+                  <span className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                ) : (
+                  <span className="flex-shrink-0">{ACTION_ICONS[action]}</span>
+                )}
+                {ACTION_LABELS[action]}
+              </button>
+            ))}
+          </div>
+
+          {/* Action history */}
+          {responseActions.length > 0 && (
+            <div className="mt-5">
+              <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-3">
+                Action History
+              </p>
+              <div className="relative border-l border-gray-700 pl-4 space-y-3">
+                {[...responseActions].reverse().map((entry) => (
+                  <div key={entry.id} className="flex items-center gap-2 text-xs">
+                    <span className="absolute -left-[5px] w-2.5 h-2.5 rounded-full bg-gray-700 border border-gray-600" />
+                    <span className="inline-flex items-center rounded-full bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-amber-400 font-medium capitalize">
+                      {entry.status}
+                    </span>
+                    <span className="text-gray-300">{ACTION_LABELS[entry.action] ?? entry.action}</span>
+                    <span className="text-gray-600">&middot;</span>
+                    <span className="text-gray-500">{relativeTime(entry.timestamp)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Alert Details */}

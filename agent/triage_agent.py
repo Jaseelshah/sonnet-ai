@@ -10,6 +10,7 @@ from typing import Any
 
 import anthropic
 
+from agent.corrections import load_relevant_corrections
 from agent.prompt import SYSTEM_PROMPT, build_user_prompt
 from config.settings import ANTHROPIC_API_KEY, ANTHROPIC_MAX_TOKENS, ANTHROPIC_MODEL, CROWN_JEWELS
 from models.alert import Alert
@@ -39,8 +40,12 @@ class TriageAgent:
         """Send an alert to Claude for triage and return a TriageResult."""
         logger.info("Triaging alert %s (%s)", alert.id, alert.title)
 
+        corrections_context = load_relevant_corrections(
+            alert_source=alert.source,
+            mitre_tactic="",  # tactic unknown pre-triage; source alone drives relevance
+        )
         user_prompt = build_user_prompt(
-            alert.to_prompt_context(), enrichment_context
+            alert.to_prompt_context(), enrichment_context, corrections_context
         )
         raw_response = self._call_api(user_prompt)
         result = self._parse_response(raw_response, alert.id)

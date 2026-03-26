@@ -1,5 +1,17 @@
 export type Priority = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
 
+export type ResponseAction = "isolate_host" | "block_ip" | "reset_password" | "dismiss";
+
+export interface ResponseActionEntry {
+  id: string;
+  alert_id: string;
+  action: ResponseAction;
+  analyst: string;
+  status: "simulated" | "executed" | "failed";
+  timestamp: string;
+  details?: string;
+}
+
 export type FeedbackStatus = "confirmed" | "corrected" | "pending";
 
 export interface AlertFeedback {
@@ -51,6 +63,7 @@ export interface DashboardStats {
   recent_alerts: TriagedAlert[];
   false_positive_avg: number;
   feedback_coverage: number;
+  corrections_count: number;
 }
 
 export interface ExecutiveReport {

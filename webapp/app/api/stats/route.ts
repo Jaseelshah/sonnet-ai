@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readJSON, triageResultsPath, rawAlertsPath, feedbackPath } from "@/lib/data";
+import { readJSON, triageResultsPath, rawAlertsPath, feedbackPath, correctionsPath } from "@/lib/data";
 import { AlertFeedback } from "@/lib/types";
 
 export async function GET(request: NextRequest) {
@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
     : (allTriageResults as Record<string, unknown>[]);
 
   if (triageResults.length === 0) {
+    const corrections = await readJSON(correctionsPath);
     return NextResponse.json({
       total_alerts: 0,
       by_priority: {},
@@ -25,6 +26,7 @@ export async function GET(request: NextRequest) {
       recent_alerts: [],
       false_positive_avg: 0,
       feedback_coverage: 0,
+      corrections_count: corrections.length,
     });
   }
 
@@ -59,9 +61,12 @@ export async function GET(request: NextRequest) {
       new Date(b.triaged_at as string).getTime() - new Date(a.triaged_at as string).getTime()
   );
 
-  // Compute feedback coverage
-  const allFeedback = (await readJSON(feedbackPath)) as AlertFeedback[];
-  const feedbackAlertIds = new Set(allFeedback.map((f) => f.alert_id));
+  // Compute feedback coverage and corrections count in parallel
+  const [allFeedback, allCorrections] = await Promise.all([
+    readJSON(feedbackPath) as Promise<AlertFeedback[]>,
+    readJSON(correctionsPath),
+  ]);
+  const feedbackAlertIds = new Set((allFeedback as AlertFeedback[]).map((f) => f.alert_id));
   const feedbackCount = (triageResults as Record<string, unknown>[]).filter((tr) =>
     feedbackAlertIds.has(tr.alert_id as string)
   ).length;
@@ -79,5 +84,6 @@ export async function GET(request: NextRequest) {
     recent_alerts: merged.slice(0, 5),
     false_positive_avg: totalFP / triageResults.length,
     feedback_coverage: feedbackCoverage,
+    corrections_count: allCorrections.length,
   });
 }

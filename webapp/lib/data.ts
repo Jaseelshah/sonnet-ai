@@ -23,6 +23,12 @@ export const rawAlertsPath = path.join(ROOT, "mock_data", "alerts.json");
 /** Absolute path to the analyst feedback JSON log. */
 export const feedbackPath = path.join(ROOT, "logs", "feedback.json");
 
+/** Absolute path to the analyst corrections JSON log (few-shot learning). */
+export const correctionsPath = path.join(ROOT, "logs", "corrections.json");
+
+/** Absolute path to the response actions JSON log. */
+export const responseActionsPath = path.join(ROOT, "logs", "response_actions.json");
+
 // ---------------------------------------------------------------------------
 // In-memory cache
 // ---------------------------------------------------------------------------

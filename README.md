@@ -242,6 +242,40 @@ python -m pytest tests/ --cov=. --cov-report=term-missing
 
 ---
 
+## MCP Server
+
+Sonnet AI can be used as an MCP server, allowing Claude Code, Claude Desktop, or any MCP-compatible client to access triage capabilities directly.
+
+### Quick Setup (Claude Code)
+
+Add to your MCP configuration:
+
+```json
+{
+  "mcpServers": {
+    "sonnet-ai": {
+      "command": "python",
+      "args": ["-m", "mcp_server.server"],
+      "cwd": "/path/to/sentinel-ai"
+    }
+  }
+}
+```
+
+### Available Tools
+
+| Tool | Description |
+|------|-------------|
+| `triage_alert` | Triage a security alert with AI and MITRE ATT&CK mapping |
+| `enrich_ioc` | Look up IOC reputation in VirusTotal |
+| `get_recent_alerts` | Get the most recently triaged alerts |
+| `get_stats` | Dashboard statistics and priority breakdown |
+| `get_alert_by_id` | Look up a specific alert by ID |
+
+See [mcp_server/README.md](mcp_server/README.md) for full documentation.
+
+---
+
 ## Project Structure
 
 ```
@@ -276,6 +310,12 @@ sonnet-ai/
 │
 ├── config/
 │   └── settings.py              # Environment variable loading and validation
+│
+├── mcp_server/
+│   ├── __init__.py              # Package marker
+│   ├── __main__.py              # Entry point for python -m mcp_server
+│   ├── server.py                # MCP server with 5 tools
+│   └── README.md                # MCP setup documentation
 │
 ├── scripts/
 │   ├── env_utils.py             # Shared .env file parser
