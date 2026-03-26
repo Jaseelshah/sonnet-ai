@@ -10,6 +10,7 @@ export interface ResponseActionEntry {
   status: "simulated" | "executed" | "failed";
   timestamp: string;
   details?: string;
+  auto_eligible?: boolean;
 }
 
 export type FeedbackStatus = "confirmed" | "corrected" | "pending";
@@ -47,6 +48,7 @@ export interface TriageResult {
   recommended_actions: string[];
   escalate: boolean;
   false_positive_likelihood: number;
+  essential_eight_controls?: string[];
   tenant_id?: string;
   triaged_at: string;
 }
@@ -96,4 +98,5 @@ export interface Settings {
   };
   virustotal: { enabled: boolean; api_key: string };
   triage: { false_positive_threshold: number; log_level: string };
+  autonomy: { enabled: boolean; threshold: number };
 }

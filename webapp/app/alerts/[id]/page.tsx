@@ -187,6 +187,7 @@ export default function AlertDetailPage() {
   // Response actions state
   const [responseActions, setResponseActions] = useState<ResponseActionEntry[]>([]);
   const [respondingAction, setRespondingAction] = useState<string | null>(null);
+  const [autoEligible, setAutoEligible] = useState(false);
 
   // Fetch alert data
   useEffect(() => {
@@ -209,7 +210,10 @@ export default function AlertDetailPage() {
   useEffect(() => {
     fetch(`/api/alerts/${id}/respond`)
       .then((r) => r.json())
-      .then((data) => setResponseActions(data.actions ?? []))
+      .then((data) => {
+        setResponseActions(data.actions ?? []);
+        setAutoEligible(data.auto_eligible === true);
+      })
       .catch(console.error);
   }, [id]);
 
@@ -455,6 +459,39 @@ export default function AlertDetailPage() {
           </div>
         </div>
 
+        {/* Essential Eight */}
+        <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-5">
+          <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-3">
+            Essential Eight Controls
+          </h2>
+          {alert.essential_eight_controls && alert.essential_eight_controls.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {alert.essential_eight_controls.map((control) => (
+                <span
+                  key={control}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-1.5 text-sm text-blue-400"
+                >
+                  <svg
+                    viewBox="0 0 16 16"
+                    fill="currentColor"
+                    className="w-3.5 h-3.5 flex-shrink-0"
+                    aria-hidden="true"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M8 1.5a.75.75 0 0 1 .67.415l1.37 2.775 3.063.445a.75.75 0 0 1 .416 1.279l-2.217 2.16.523 3.05a.75.75 0 0 1-1.088.79L8 10.77l-2.737 1.439a.75.75 0 0 1-1.088-.79l.523-3.05L2.48 6.414a.75.75 0 0 1 .416-1.28l3.063-.444L7.33 1.915A.75.75 0 0 1 8 1.5Z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  {control}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-600">No Essential Eight mapping available</p>
+          )}
+        </div>
+
         {/* Recommended Actions */}
         <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-5">
           <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-3">
@@ -482,6 +519,16 @@ export default function AlertDetailPage() {
           <div className="text-xs text-amber-400 bg-amber-500/5 border border-amber-500/20 rounded-lg px-3 py-2 mb-4">
             ⚠ Response actions are in simulation mode — connect your EDR/firewall APIs to enable live response
           </div>
+
+          {/* Autonomy eligibility banner */}
+          {autoEligible && (
+            <div className="text-xs text-cyan-400 bg-cyan-500/5 border border-cyan-500/20 rounded-lg px-3 py-2 mb-4">
+              High confidence alert (&ge;95%) &mdash; eligible for autonomous response.{" "}
+              <Link href="/settings" className="underline underline-offset-2 hover:text-cyan-300 transition-colors">
+                Configure in Settings &rarr;
+              </Link>
+            </div>
+          )}
 
           {/* Action buttons — 2x2 grid */}
           <div className="grid grid-cols-2 gap-3">

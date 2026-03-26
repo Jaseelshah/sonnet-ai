@@ -1,8 +1,8 @@
 import fs from "fs/promises";
 import path from "path";
 import { NextRequest, NextResponse } from "next/server";
-import { readJSON, responseActionsPath } from "@/lib/data";
-import { ResponseAction, ResponseActionEntry } from "@/lib/types";
+import { readJSON, responseActionsPath, triageResultsPath } from "@/lib/data";
+import { ResponseAction, ResponseActionEntry, TriageResult } from "@/lib/types";
 
 const VALID_ACTIONS: ResponseAction[] = [
   "isolate_host",
@@ -28,7 +28,16 @@ export async function GET(
 ) {
   const allActions = (await readJSON(responseActionsPath)) as ResponseActionEntry[];
   const actions = allActions.filter((a) => a.alert_id === params.id);
-  return NextResponse.json({ actions });
+
+  // Determine whether this alert qualifies for autonomous response.
+  const triageResults = (await readJSON(triageResultsPath)) as TriageResult[];
+  const triageEntry = triageResults.find((r) => r.alert_id === params.id);
+  const auto_eligible =
+    triageEntry !== undefined &&
+    triageEntry.confidence >= 0.95 &&
+    triageEntry.priority === "CRITICAL";
+
+  return NextResponse.json({ actions, auto_eligible });
 }
 
 // ---------------------------------------------------------------------------

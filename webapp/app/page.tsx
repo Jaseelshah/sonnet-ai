@@ -134,8 +134,12 @@ export default function DashboardPage() {
         />
         <StatCard
           label="Agent Learning"
-          value={`${stats.corrections_count ?? 0} corrections`}
-          subtext="Few-shot examples loaded"
+          value={stats.corrections_count ?? 0}
+          subtext={
+            (stats.corrections_count ?? 0) > 0
+              ? "Learned from analyst feedback"
+              : "No corrections yet"
+          }
         />
       </div>
 

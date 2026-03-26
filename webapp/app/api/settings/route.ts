@@ -58,6 +58,10 @@ export async function GET() {
       false_positive_threshold: parseFloat(vars.FALSE_POSITIVE_THRESHOLD ?? "0.7"),
       log_level: vars.LOG_LEVEL ?? "INFO",
     },
+    autonomy: {
+      enabled: vars.AUTO_RESPONSE_ENABLED === "true",
+      threshold: parseFloat(vars.AUTONOMY_THRESHOLD ?? "0.95"),
+    },
   };
 
   return NextResponse.json({ settings });
@@ -122,6 +126,12 @@ export async function POST(request: NextRequest) {
     }
     if (body.triage.log_level) updates.LOG_LEVEL = body.triage.log_level;
   }
+  if (body.autonomy) {
+    updates.AUTO_RESPONSE_ENABLED = String(body.autonomy.enabled);
+    if (body.autonomy.threshold !== undefined) {
+      updates.AUTONOMY_THRESHOLD = String(body.autonomy.threshold);
+    }
+  }
 
   const merged = { ...currentVars, ...updates };
 
@@ -150,6 +160,10 @@ export async function POST(request: NextRequest) {
     "# Triage Tuning",
     `FALSE_POSITIVE_THRESHOLD=${merged.FALSE_POSITIVE_THRESHOLD ?? "0.7"}`,
     `LOG_LEVEL=${merged.LOG_LEVEL ?? "INFO"}`,
+    "",
+    "# Autonomous Response",
+    `AUTO_RESPONSE_ENABLED=${merged.AUTO_RESPONSE_ENABLED ?? "false"}`,
+    `AUTONOMY_THRESHOLD=${merged.AUTONOMY_THRESHOLD ?? "0.95"}`,
     "",
   ];
 

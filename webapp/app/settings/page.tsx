@@ -192,6 +192,34 @@ export default function SettingsPage() {
         </div>
       </div>
 
+      {/* Autonomous Response */}
+      <div className={sectionClass}>
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-white">Autonomous Response</h2>
+          <button
+            onClick={() => setSettings({ ...settings, autonomy: { ...settings.autonomy, enabled: !settings.autonomy.enabled } })}
+            className={`relative w-10 h-5 rounded-full transition-colors ${settings.autonomy.enabled ? "bg-[#00FFB2]" : "bg-gray-700"}`}
+          >
+            <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${settings.autonomy.enabled ? "translate-x-5" : ""}`} />
+          </button>
+        </div>
+        <p className="text-xs text-gray-500">
+          When enabled, high-confidence CRITICAL alerts will trigger response actions automatically without analyst confirmation.
+        </p>
+        <div>
+          <label className={labelClass}>Autonomy Threshold: {settings.autonomy.threshold}</label>
+          <input
+            type="number"
+            min="0"
+            max="1"
+            step="0.01"
+            className={inputClass}
+            value={settings.autonomy.threshold}
+            onChange={(e) => setSettings({ ...settings, autonomy: { ...settings.autonomy, threshold: parseFloat(e.target.value) || 0.95 } })}
+          />
+        </div>
+      </div>
+
       {/* Save */}
       <button
         onClick={save}
