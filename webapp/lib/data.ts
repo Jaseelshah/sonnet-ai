@@ -30,7 +30,7 @@ interface CacheEntry {
 }
 
 const cache = new Map<string, CacheEntry>();
-const CACHE_TTL_MS = 60_000; // 60 seconds
+const CACHE_TTL_MS = 5_000; // 5 seconds — keep low for live SIEM polling
 
 /**
  * Read and parse a JSON file from disk, with a 60-second in-memory cache.

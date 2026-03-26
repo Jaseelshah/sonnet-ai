@@ -103,16 +103,23 @@ def save_results(results: list[TriageResult], append: bool = False) -> Path:
     new_data = [r.to_dict() for r in results]
 
     if append and output_path.exists():
-        existing_data: list[dict] = json.loads(output_path.read_text(encoding="utf-8"))
+        try:
+            existing_data: list[dict] = json.loads(output_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, ValueError):
+            existing_data = []
         existing_data.extend(new_data)
         combined = existing_data
     else:
         combined = new_data
 
-    output_path.write_text(json.dumps(combined, indent=2), encoding="utf-8")
+    # Atomic write: write to a temp file then rename so readers never see
+    # a half-written file (prevents the dashboard from caching empty data).
+    tmp_path = output_path.with_suffix(".tmp")
+    tmp_path.write_text(json.dumps(combined, indent=2), encoding="utf-8")
+    tmp_path.replace(output_path)
 
     logger = logging.getLogger(__name__)
-    logger.info("Saved %d triage result(s) to %s", len(results), output_path)
+    logger.info("Saved %d triage result(s) to %s (%d total)", len(results), output_path, len(combined))
     return output_path
 
 

@@ -26,6 +26,7 @@ env/
 # Logs (keep the directory, ignore contents)
 logs/*.log
 logs/*.json
+logs/*.tmp
 
 # Next.js webapp
 webapp/node_modules/
