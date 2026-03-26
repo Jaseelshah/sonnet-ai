@@ -1,21 +1,26 @@
 # Sonnet AI
 
-An autonomous SOC (Security Operations Centre) triage agent powered by Claude. Sonnet AI ingests security alerts from live Elasticsearch SIEM or static fixtures, enriches IOCs via VirusTotal, triages them using AI with MITRE ATT&CK mapping, and routes results to Slack and Jira — with a full Next.js web dashboard for real-time visibility.
+**Automated security alert triage for SOC teams that are drowning in alerts.**
+
+Sonnet AI is an autonomous triage agent that sits between your SIEM and your analysts. It ingests security alerts from Elasticsearch, enriches IOCs against VirusTotal, classifies threats with MITRE ATT&CK mapping, and delivers prioritised verdicts to Slack and Jira — in under 18 seconds per alert, 24/7, with zero analyst fatigue.
+
+Built for MSSPs, in-house SOC teams, and IT security managers who need to scale Tier-1 triage without scaling headcount.
+
+**Alert in. Verdict out. Analyst notified.**
 
 ---
 
 ## Features
 
-- **AI-Powered Triage** — Sends normalised security alerts to Claude for severity assessment, MITRE ATT&CK classification, and actionable response recommendations.
+- **AI-Powered Triage** — Classifies severity, assigns confidence scores, recommends response actions, and flags false positives — replacing manual Tier-1 alert review.
+- **MITRE ATT&CK Mapping** — Every triaged alert is mapped to the most relevant ATT&CK tactic and technique for standardised threat classification.
 - **IOC Enrichment** — Extracts IPs, domains, and file hashes from alerts and queries VirusTotal for reputation data before triage.
-- **MITRE ATT&CK Mapping** — Every triaged alert is mapped to the most relevant ATT&CK tactic and technique.
-- **Web Dashboard** — A full Next.js dashboard with real-time stats, alert drill-down, interactive charts, and a settings panel.
-- **Slack Notifications** — Posts triage reports to a Slack channel via webhook for real-time analyst visibility.
-- **Jira Ticket Creation** — Automatically creates Jira issues for escalated (CRITICAL/HIGH) alerts.
-- **Live SIEM Integration** — Connects to Elasticsearch via a polling parser, with a built-in alert generator that simulates 8 real-world attack types using Elastic Common Schema (ECS) field names.
+- **Live SIEM Integration** — Polls Elasticsearch for new alerts in real time, with a built-in generator that simulates 8 attack types using Elastic Common Schema (ECS) fields.
+- **Slack Notifications** — Posts triage verdicts to a Slack channel via webhook so analysts see results the moment they land.
+- **Jira Ticket Creation** — Automatically creates Jira issues for escalated CRITICAL/HIGH alerts with full triage context attached.
+- **Web Dashboard** — Real-time Next.js dashboard with stat cards, priority charts, MITRE donut breakdowns, alert drill-down, and a settings panel.
 - **One-Click Demo** — Docker Compose environment with Elasticsearch + Kibana and launcher scripts that start the full stack in one command.
-- **Structured Reporting** — Generates formatted console reports and persists results as JSON for downstream processing.
-- **False-Positive Scoring** — Estimates false-positive likelihood to help analysts prioritise their queue.
+- **False-Positive Scoring** — Estimates false-positive likelihood so analysts focus on what matters, not what's noisy.
 
 ---
 
