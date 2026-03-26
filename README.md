@@ -248,20 +248,30 @@ sonnet-ai/
 
 ## Screenshots
 
-> Run the agent and dashboard locally to see the full UI. Screenshots coming soon.
-
-<!-- Uncomment and add paths when screenshots are available:
 ### Dashboard
 ![Dashboard](docs/screenshots/dashboard.png)
 
 ### Alerts Feed
-![Alerts](docs/screenshots/alerts.png)
+![Alerts Feed](docs/screenshots/alerts-feed.png)
 
-### Alert Detail
-![Alert Detail](docs/screenshots/alert-detail.png)
+### Alert Detail — Cobalt Strike Beacon
+![Alert Detail](docs/screenshots/aler-detail.png)
 
 ### Reports
-![Reports](docs/screenshots/reports.png)
+![Reports](docs/screenshots/reports.pmg.png)
+
+### Settings
+![Settings](docs/screenshots/settings.png)
+
+<!-- Add these when screenshots are available:
+### Terminal — Triage Run
+![Terminal](docs/screenshots/terminal-triage.png)
+
+### Slack Notifications
+![Slack](docs/screenshots/slack-notification.png)
+
+### Jira Tickets
+![Jira](docs/screenshots/jira-ticket.png)
 -->
 
 ---
