@@ -20,6 +20,9 @@ export const triageResultsPath = path.join(ROOT, "logs", "triage_results.json");
 /** Absolute path to the raw alerts mock data. */
 export const rawAlertsPath = path.join(ROOT, "mock_data", "alerts.json");
 
+/** Absolute path to the analyst feedback JSON log. */
+export const feedbackPath = path.join(ROOT, "logs", "feedback.json");
+
 // ---------------------------------------------------------------------------
 // In-memory cache
 // ---------------------------------------------------------------------------

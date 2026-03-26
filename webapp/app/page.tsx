@@ -112,7 +112,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard label="Total Alerts" value={stats.total_alerts} accent />
         <StatCard
           label="Critical"
@@ -126,6 +126,11 @@ export default function DashboardPage() {
         <StatCard
           label="Escalation Rate"
           value={`${(stats.escalation_rate * 100).toFixed(0)}%`}
+        />
+        <StatCard
+          label="Feedback Coverage"
+          value={`${((stats.feedback_coverage ?? 0) * 100).toFixed(0)}%`}
+          subtext="Analyst-reviewed alerts"
         />
       </div>
 

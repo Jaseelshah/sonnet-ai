@@ -21,3 +21,71 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #374151;
 }
+
+/* ---------------------------------------------------------------------------
+   Print styles — executive report PDF output
+   --------------------------------------------------------------------------- */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Hide sidebar, header, any nav or button marked no-print */
+  nav,
+  .sidebar,
+  aside,
+  .no-print {
+    display: none !important;
+  }
+
+  /* Full-width main content — remove sidebar offset */
+  main {
+    margin: 0 !important;
+    padding: 20px !important;
+    width: 100% !important;
+  }
+
+  /* Cards */
+  .print-card {
+    border: 1px solid #e5e7eb !important;
+    background: white !important;
+    break-inside: avoid;
+  }
+
+  /* Primary text */
+  .print-text {
+    color: black !important;
+  }
+
+  /* Secondary / label text */
+  .print-subtext {
+    color: #6b7280 !important;
+  }
+
+  /* Priority bars — replace neon colors with accessible print equivalents */
+  .priority-bar-track {
+    background: #e5e7eb !important;
+  }
+
+  .priority-bar {
+    background-color: var(--print-color, #374151) !important;
+  }
+
+  /* Recharts SVGs (other pages) — hide interactive elements */
+  .recharts-tooltip-wrapper {
+    display: none !important;
+  }
+
+  /* Page break hints */
+  h1,
+  h2 {
+    break-after: avoid;
+  }
+
+  table {
+    break-inside: avoid;
+  }
+}

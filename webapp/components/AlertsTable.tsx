@@ -1,15 +1,26 @@
 "use client";
 
 import Link from "next/link";
-import { TriagedAlert } from "@/lib/types";
+import { TriagedAlert, AlertFeedback } from "@/lib/types";
 import { PriorityBadge } from "./PriorityBadge";
+import { FeedbackBadge } from "./FeedbackBadge";
 
-interface AlertsTableProps {
+export interface AlertsTableProps {
   alerts: TriagedAlert[];
   compact?: boolean;
+  feedbackMap?: Record<string, AlertFeedback>;
 }
 
-export function AlertsTable({ alerts, compact = false }: AlertsTableProps) {
+export function AlertsTable({
+  alerts,
+  compact = false,
+  feedbackMap,
+}: AlertsTableProps) {
+  // Column count for empty-state colspan
+  // compact: 4 cols (ID, Title, Priority, Confidence, Time)
+  // full:    7 cols (+ MITRE Technique, Escalated, Review)
+  const colCount = compact ? 5 : 8;
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
@@ -35,6 +46,11 @@ export function AlertsTable({ alerts, compact = false }: AlertsTableProps) {
             {!compact && (
               <th className="px-4 py-3 text-xs font-semibold uppercase tracking-widest text-gray-500">
                 Escalated
+              </th>
+            )}
+            {!compact && (
+              <th className="px-4 py-3 text-xs font-semibold uppercase tracking-widest text-gray-500">
+                Review
               </th>
             )}
             <th className="px-4 py-3 text-xs font-semibold uppercase tracking-widest text-gray-500">
@@ -83,23 +99,31 @@ export function AlertsTable({ alerts, compact = false }: AlertsTableProps) {
               {!compact && (
                 <td className="px-4 py-3">
                   {alert.escalate ? (
-                    <span className="text-[#FF4444] text-xs font-medium">
-                      Yes
-                    </span>
+                    <span className="text-[#FF4444] text-xs font-medium">Yes</span>
                   ) : (
                     <span className="text-gray-600 text-xs">No</span>
                   )}
                 </td>
               )}
+              {!compact && (
+                <td className="px-4 py-3">
+                  <FeedbackBadge
+                    status={feedbackMap?.[alert.alert_id]?.status}
+                  />
+                </td>
+              )}
               <td className="px-4 py-3 text-xs text-gray-500">
-                {new Date(alert.triaged_at).toISOString().replace('T', ' ').slice(0, 19) + ' UTC'}
+                {new Date(alert.triaged_at)
+                  .toISOString()
+                  .replace("T", " ")
+                  .slice(0, 19) + " UTC"}
               </td>
             </tr>
           ))}
           {alerts.length === 0 && (
             <tr>
               <td
-                colSpan={compact ? 4 : 7}
+                colSpan={colCount}
                 className="px-4 py-8 text-center text-gray-600"
               >
                 No alerts found

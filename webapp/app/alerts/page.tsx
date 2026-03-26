@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { TriagedAlert } from "@/lib/types";
+import { TriagedAlert, AlertFeedback } from "@/lib/types";
 import { AlertsTable } from "@/components/AlertsTable";
 
 export default function AlertsPage() {
   const [alerts, setAlerts] = useState<TriagedAlert[]>([]);
+  const [feedbackMap, setFeedbackMap] = useState<Record<string, AlertFeedback>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [search, setSearch] = useState("");
@@ -69,6 +70,26 @@ export default function AlertsPage() {
     return () => clearInterval(interval);
   }, [fetchAlerts]);
 
+  // Fetch feedback map once on mount (refreshed alongside alerts polling)
+  const fetchFeedback = useCallback(async () => {
+    try {
+      const r = await fetch("/api/feedback");
+      const data = await r.json();
+      setFeedbackMap(data.feedback ?? {});
+    } catch {
+      // Non-fatal: table still renders, just without review status
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchFeedback();
+  }, [fetchFeedback]);
+
+  useEffect(() => {
+    const interval = setInterval(fetchFeedback, 30000);
+    return () => clearInterval(interval);
+  }, [fetchFeedback]);
+
   return (
     <div className="space-y-6">
       <div>
@@ -109,7 +130,7 @@ export default function AlertsPage() {
         ) : error ? (
           <p className="p-5 text-red-400">Failed to load alerts.</p>
         ) : (
-          <AlertsTable alerts={alerts} />
+          <AlertsTable alerts={alerts} feedbackMap={feedbackMap} />
         )}
       </div>
     </div>

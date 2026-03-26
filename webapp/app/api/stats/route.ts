@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readJSON, triageResultsPath, rawAlertsPath } from "@/lib/data";
+import { readJSON, triageResultsPath, rawAlertsPath, feedbackPath } from "@/lib/data";
+import { AlertFeedback } from "@/lib/types";
 
 export async function GET(request: NextRequest) {
   const tenant = request.nextUrl.searchParams.get("tenant");
@@ -23,6 +24,7 @@ export async function GET(request: NextRequest) {
       by_mitre_technique: {},
       recent_alerts: [],
       false_positive_avg: 0,
+      feedback_coverage: 0,
     });
   }
 
@@ -57,6 +59,16 @@ export async function GET(request: NextRequest) {
       new Date(b.triaged_at as string).getTime() - new Date(a.triaged_at as string).getTime()
   );
 
+  // Compute feedback coverage
+  const allFeedback = (await readJSON(feedbackPath)) as AlertFeedback[];
+  const feedbackAlertIds = new Set(allFeedback.map((f) => f.alert_id));
+  const feedbackCount = (triageResults as Record<string, unknown>[]).filter((tr) =>
+    feedbackAlertIds.has(tr.alert_id as string)
+  ).length;
+  const feedbackCoverage = triageResults.length > 0
+    ? feedbackCount / triageResults.length
+    : 0;
+
   return NextResponse.json({
     total_alerts: triageResults.length,
     by_priority: byPriority,
@@ -66,5 +78,6 @@ export async function GET(request: NextRequest) {
     by_mitre_technique: byTechnique,
     recent_alerts: merged.slice(0, 5),
     false_positive_avg: totalFP / triageResults.length,
+    feedback_coverage: feedbackCoverage,
   });
 }

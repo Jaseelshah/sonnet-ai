@@ -1,5 +1,16 @@
 export type Priority = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
 
+export type FeedbackStatus = "confirmed" | "corrected" | "pending";
+
+export interface AlertFeedback {
+  alert_id: string;
+  status: FeedbackStatus;
+  corrected_priority?: Priority;
+  analyst_note?: string;
+  reviewed_at: string;
+  reviewed_by: string;
+}
+
 export interface Alert {
   id: string;
   source: string;
@@ -39,6 +50,25 @@ export interface DashboardStats {
   by_mitre_technique: Record<string, number>;
   recent_alerts: TriagedAlert[];
   false_positive_avg: number;
+  feedback_coverage: number;
+}
+
+export interface ExecutiveReport {
+  generated_at: string;
+  period: string;
+  total_alerts: number;
+  by_priority: Record<string, number>;
+  top_tactics: Array<{ tactic: string; count: number }>;
+  average_confidence: number;
+  escalation_rate: number;
+  feedback_accuracy: number;
+  feedback_total: number;
+  feedback_confirmed: number;
+  feedback_corrected: number;
+  crown_jewel_escalations: number;
+  time_saved_hours: number;
+  alerts_per_day: number;
+  tenant_breakdown?: Record<string, number>;
 }
 
 export interface Settings {
