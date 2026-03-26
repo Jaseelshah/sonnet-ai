@@ -37,6 +37,13 @@ JIRA_PROJECT_KEY: str = os.getenv("JIRA_PROJECT_KEY", "")
 VIRUSTOTAL_ENABLED: bool = os.getenv("VIRUSTOTAL_ENABLED", "false").lower() == "true"
 VIRUSTOTAL_API_KEY: str = os.getenv("VIRUSTOTAL_API_KEY", "")
 
+# ── Elasticsearch / SIEM connector ──────────────────────────────────────────
+ELASTIC_URL: str = os.getenv("ELASTIC_URL", "http://localhost:9200")
+ELASTIC_USERNAME: str = os.getenv("ELASTIC_USERNAME", "")
+ELASTIC_PASSWORD: str = os.getenv("ELASTIC_PASSWORD", "")
+ELASTIC_INDEX: str = os.getenv("ELASTIC_INDEX", "sonnet-ai-alerts")
+ELASTIC_VERIFY_SSL: bool = os.getenv("ELASTIC_VERIFY_SSL", "false").lower() == "true"
+
 # ── Triage thresholds ───────────────────────────────────────────────────────
 ESCALATION_PRIORITIES: set[str] = {"CRITICAL", "HIGH"}
 FALSE_POSITIVE_THRESHOLD: float = float(os.getenv("FALSE_POSITIVE_THRESHOLD", "0.7"))

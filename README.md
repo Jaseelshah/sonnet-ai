@@ -1,6 +1,6 @@
 # Sonnet AI
 
-An autonomous SOC (Security Operations Centre) triage agent powered by Claude. Sonnet AI ingests security alerts, enriches IOCs via VirusTotal, triages them using AI with MITRE ATT&CK mapping, and routes results to Slack and Jira — with a full Next.js web dashboard for real-time visibility.
+An autonomous SOC (Security Operations Centre) triage agent powered by Claude. Sonnet AI ingests security alerts from live Elasticsearch SIEM or static fixtures, enriches IOCs via VirusTotal, triages them using AI with MITRE ATT&CK mapping, and routes results to Slack and Jira — with a full Next.js web dashboard for real-time visibility.
 
 ---
 
@@ -12,6 +12,8 @@ An autonomous SOC (Security Operations Centre) triage agent powered by Claude. S
 - **Web Dashboard** — A full Next.js dashboard with real-time stats, alert drill-down, interactive charts, and a settings panel.
 - **Slack Notifications** — Posts triage reports to a Slack channel via webhook for real-time analyst visibility.
 - **Jira Ticket Creation** — Automatically creates Jira issues for escalated (CRITICAL/HIGH) alerts.
+- **Live SIEM Integration** — Connects to Elasticsearch via a polling parser, with a built-in alert generator that simulates 8 real-world attack types using Elastic Common Schema (ECS) field names.
+- **One-Click Demo** — Docker Compose environment with Elasticsearch + Kibana and launcher scripts that start the full stack in one command.
 - **Structured Reporting** — Generates formatted console reports and persists results as JSON for downstream processing.
 - **False-Positive Scoring** — Estimates false-positive likelihood to help analysts prioritise their queue.
 
@@ -21,14 +23,14 @@ An autonomous SOC (Security Operations Centre) triage agent powered by Claude. S
 
 ```
 ┌──────────────┐    ┌──────────────┐    ┌───────────────┐
-│  SIEM / EDR  │───▶│  Sonnet AI │───▶│  Slack / Jira │
-│  Alerts JSON │    │  Python Agent│    │  (outputs)    │
+│Elasticsearch │───▶│  Sonnet AI   │───▶│  Slack / Jira │
+│  SIEM Index  │    │  Python Agent│    │  (outputs)    │
 └──────────────┘    └──────┬───────┘    └───────────────┘
-                           │
-                    ┌──────▼───────┐
-                    │   Claude API │
-                    │   (triage)   │
-                    └──────┬───────┘
+       ▲                   │
+┌──────┴───────┐    ┌──────▼───────┐
+│    Alert     │    │   Claude API │
+│  Generator   │    │   (triage)   │
+└──────────────┘    └──────┬───────┘
                            │
                     ┌──────▼───────┐    ┌───────────────┐
                     │VirusTotal API│    │  Next.js Web  │
@@ -42,6 +44,7 @@ An autonomous SOC (Security Operations Centre) triage agent powered by Claude. S
 
 - Python 3.11+
 - Node.js 18+ and npm (for the web dashboard)
+- Docker and Docker Compose (for the Elasticsearch SIEM demo)
 - An [Anthropic API key](https://console.anthropic.com/)
 - (Optional) A [VirusTotal API key](https://www.virustotal.com/) for IOC enrichment
 - (Optional) A Slack incoming webhook URL
@@ -79,10 +82,14 @@ cp .env.example .env
 ### 3. Run the Python triage agent
 
 ```bash
+# Mock mode — triage static sample alerts (default)
 python main.py
+
+# Live mode — poll Elasticsearch for real-time alerts
+python main.py --source elastic
 ```
 
-The agent will:
+In mock mode, the agent will:
 
 1. Load alerts from `mock_data/alerts.json`
 2. Extract and enrich IOCs via VirusTotal (if enabled)
@@ -114,6 +121,36 @@ Or use the convenience scripts:
 ./start.sh          # Linux / macOS
 start.bat           # Windows
 ```
+
+### 5. Run the full SIEM demo (Elasticsearch + Kibana)
+
+Launch the complete stack with one command — Elasticsearch, Kibana, alert generator, triage agent, and web dashboard:
+
+```bash
+# Windows
+start-demo.bat
+
+# Linux / macOS
+./start-demo.sh
+```
+
+This will:
+
+1. Start Elasticsearch 8.11 and Kibana 8.11 via Docker Compose
+2. Wait for Elasticsearch to become healthy
+3. Launch the alert generator (produces ECS-compliant security alerts every 30s)
+4. Launch the triage agent in live Elasticsearch mode
+5. Start the Next.js dashboard at [http://localhost:3000](http://localhost:3000)
+
+Services will be available at:
+
+| Service | URL |
+|---------|-----|
+| **Dashboard** | [http://localhost:3000](http://localhost:3000) |
+| **Kibana** | [http://localhost:5601](http://localhost:5601) |
+| **Elasticsearch** | [http://localhost:9200](http://localhost:9200) |
+
+The generator simulates 8 attack types: brute force, lateral movement, privilege escalation, data exfiltration, malware execution, port scanning, suspicious PowerShell, and failed MFA.
 
 ---
 
@@ -159,6 +196,11 @@ Create a `.env` file in the project root (see `.env.example`):
 | `JIRA_EMAIL` | If Jira enabled | — | Jira account email |
 | `JIRA_API_TOKEN` | If Jira enabled | — | Jira API token |
 | `JIRA_PROJECT_KEY` | If Jira enabled | — | Jira project key |
+| `ELASTIC_URL` | No | `http://localhost:9200` | Elasticsearch base URL |
+| `ELASTIC_USERNAME` | No | — | Elasticsearch username (if auth enabled) |
+| `ELASTIC_PASSWORD` | No | — | Elasticsearch password (if auth enabled) |
+| `ELASTIC_INDEX` | No | `sonnet-ai-alerts` | Elasticsearch index for SIEM alerts |
+| `ELASTIC_VERIFY_SSL` | No | `false` | Verify TLS certificates for Elasticsearch |
 | `FALSE_POSITIVE_THRESHOLD` | No | `0.7` | Threshold for false-positive scoring |
 | `LOG_LEVEL` | No | `INFO` | Logging level (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
 
@@ -181,9 +223,11 @@ python -m pytest tests/ --cov=. --cov-report=term-missing
 ```
 sonnet-ai/
 ├── main.py                      # Entry point — orchestrates the triage pipeline
+├── docker-compose.yml           # Elasticsearch 8.11 + Kibana 8.11
 ├── requirements.txt             # Python dependencies
 ├── .env.example                 # Environment variable template
 ├── start.sh / start.bat         # Convenience scripts to launch the webapp
+├── start-demo.sh / start-demo.bat  # Full SIEM demo launchers
 │
 ├── agent/
 │   ├── triage_agent.py          # Core agent — calls Claude API, parses response
@@ -192,6 +236,12 @@ sonnet-ai/
 ├── models/
 │   ├── alert.py                 # Normalised security alert dataclass
 │   └── triage.py                # Triage result with priority, MITRE mapping
+│
+├── parsers/
+│   └── elastic.py               # Elasticsearch poller — ECS-to-Alert conversion
+│
+├── simulators/
+│   └── elastic_generator.py     # Generates realistic ECS alerts into Elasticsearch
 │
 ├── enrichment/
 │   └── virustotal.py            # IOC extraction and VirusTotal v3 lookups
@@ -202,6 +252,10 @@ sonnet-ai/
 │
 ├── config/
 │   └── settings.py              # Environment variable loading and validation
+│
+├── scripts/
+│   ├── env_utils.py             # Shared .env file parser
+│   └── wait-for-elastic.py      # Waits for Elasticsearch readiness
 │
 ├── mock_data/
 │   └── alerts.json              # Sample security alerts for testing
@@ -282,6 +336,7 @@ sonnet-ai/
 |-------|-----------|
 | AI Engine | [Claude API](https://docs.anthropic.com/) (Anthropic) |
 | Backend Agent | Python 3.11+, Anthropic SDK |
+| SIEM | Elasticsearch 8.11, Kibana 8.11 (Docker) |
 | IOC Enrichment | VirusTotal API v3 |
 | Web Dashboard | Next.js 14, React 18, TypeScript, Tailwind CSS |
 | Charts | Recharts |

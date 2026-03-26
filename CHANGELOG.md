@@ -4,6 +4,18 @@ All notable changes to Sonnet AI are documented in this file.
 
 ---
 
+## Phase 6 — Live Elasticsearch SIEM Integration
+
+- **Virtualized SIEM connector** — Docker Compose environment with Elasticsearch 8.11 and Kibana 8.11 for local SIEM simulation
+- **Alert generator** (`simulators/elastic_generator.py`) — Produces realistic ECS-compliant security alerts across 8 attack types: brute force, lateral movement, privilege escalation, data exfiltration, malware execution, port scanning, suspicious PowerShell, and failed MFA
+- **Elasticsearch parser** (`parsers/elastic.py`) — Polls Elasticsearch for new alerts, converts ECS documents to normalised `Alert` objects with pagination and deduplication
+- **Live triage mode** — `python main.py --source elastic` runs a continuous polling loop against Elasticsearch instead of static JSON fixtures
+- **One-click demo** — `start-demo.bat` (Windows) and `start-demo.sh` (Mac/Linux) launch the full stack: Elasticsearch, Kibana, alert generator, triage agent, and web dashboard
+- **Shared environment utilities** (`scripts/env_utils.py`) — Centralised `.env` file parser used across standalone scripts
+- **Health check script** (`scripts/wait-for-elastic.py`) — Waits for Elasticsearch readiness before starting dependent services
+- Configurable TLS verification via `ELASTIC_VERIFY_SSL` environment variable
+- RFC 5737 documentation IPs used in simulated alerts for safe, non-routable test data
+
 ## Phase 5 — Polish & Integration
 
 - Added cross-platform start scripts (`start.sh`, `start.bat`)
