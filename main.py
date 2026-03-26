@@ -30,6 +30,7 @@ from config.settings import LOG_DIR, LOG_FORMAT, LOG_LEVEL, MOCK_DATA_DIR, TENAN
 from enrichment.virustotal import enrich_alert, format_enrichment_summary
 from models.alert import Alert
 from models.triage import TriageResult
+from agent.attack_chain import track_alert
 from agent.triage_agent import TriageAgent
 from outputs.jira import send_to_jira
 from outputs.slack import send_to_slack
@@ -97,6 +98,20 @@ def process_alerts(alerts: list[Alert]) -> list[TriageResult]:
 
             # Create Jira ticket for escalated alerts
             send_to_jira(result)
+
+            # Attack chain detection — track per-user alert frequency
+            chain_alert = track_alert(alert)
+            if chain_alert:
+                logger.info("Attack chain detected for user %s — triaging synthetic alert", chain_alert.user)
+                chain_result = agent.triage(chain_alert, "")
+                if TENANTS:
+                    chain_result.tenant_id = TENANTS[hash(chain_alert.id) % len(TENANTS)]
+                results.append(chain_result)
+                chain_report = chain_result.format_report()
+                print(chain_report)
+                print()
+                send_to_slack(chain_result, "")
+                send_to_jira(chain_result)
 
         except Exception:
             logger.exception("Failed to triage alert %s", alert.id)

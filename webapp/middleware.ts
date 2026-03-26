@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "fallback-secret-change-me"
-);
+const JWT_SECRET_RAW = process.env.JWT_SECRET;
+if (!JWT_SECRET_RAW) {
+  console.error("FATAL: JWT_SECRET environment variable is required. Set it in .env.local");
+}
+const JWT_SECRET = new TextEncoder().encode(JWT_SECRET_RAW || "");
 const COOKIE_NAME = "sonnet-ai-token";
 
 const PUBLIC_PATHS = ["/login", "/api/auth/login"];

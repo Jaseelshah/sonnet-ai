@@ -14,5 +14,5 @@ export async function GET() {
     return NextResponse.json({ authenticated: false });
   }
 
-  return NextResponse.json({ authenticated: true, email: payload.email });
+  return NextResponse.json({ authenticated: true, email: payload.email, role: payload.role });
 }

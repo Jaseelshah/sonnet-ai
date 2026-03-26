@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import path from "path";
 import { readJSON, triageResultsPath, ROOT } from "@/lib/data";
 import { ExecutiveReport } from "@/lib/types";
+import { validateTenantAccess } from "@/lib/tenant";
 
 /** Path to analyst feedback log — defined locally until data.ts export is confirmed. */
 const feedbackPath = path.join(ROOT, "logs", "feedback.json");
@@ -32,7 +33,9 @@ interface FeedbackRecord {
  * Returns: { report: ExecutiveReport }
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
-  const tenant = request.nextUrl.searchParams.get("tenant") ?? "";
+  const tenantResult = await validateTenantAccess(request);
+  if (tenantResult instanceof NextResponse) return tenantResult;
+  const tenant = tenantResult.tenant;
 
   try {
     // -------------------------------------------------------------------------

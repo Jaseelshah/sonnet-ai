@@ -9,13 +9,29 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [error, setError] = useState(false);
+  const [role, setRole] = useState<string>("");
 
   useEffect(() => {
-    fetch("/api/settings")
+    // Check role first, then load settings only if admin.
+    fetch("/api/auth/me")
       .then((r) => r.json())
-      .then((data) => setSettings(data.settings ?? null))
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
+      .then((data) => {
+        const userRole = data.role || "analyst";
+        setRole(userRole);
+        if (userRole !== "admin") {
+          setLoading(false);
+          return;
+        }
+        return fetch("/api/settings")
+          .then((r) => r.json())
+          .then((d) => setSettings(d.settings ?? null))
+          .catch(() => setError(true))
+          .finally(() => setLoading(false));
+      })
+      .catch(() => {
+        setRole("analyst");
+        setLoading(false);
+      });
   }, []);
 
   const save = async () => {
@@ -43,6 +59,17 @@ export default function SettingsPage() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="w-6 h-6 border-2 border-[#00FFB2] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (role && role !== "admin") {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <p className="text-gray-400 text-lg">Access Restricted</p>
+          <p className="text-gray-600 text-sm mt-2">Settings are only available to administrators.</p>
+        </div>
       </div>
     );
   }

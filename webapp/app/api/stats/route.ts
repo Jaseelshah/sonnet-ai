@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readJSON, triageResultsPath, rawAlertsPath, feedbackPath, correctionsPath } from "@/lib/data";
 import { AlertFeedback } from "@/lib/types";
+import { validateTenantAccess } from "@/lib/tenant";
 
 export async function GET(request: NextRequest) {
-  const tenant = request.nextUrl.searchParams.get("tenant");
+  const tenantResult = await validateTenantAccess(request);
+  if (tenantResult instanceof NextResponse) return tenantResult;
+  const tenant = tenantResult.tenant;
 
   const allTriageResults = await readJSON(triageResultsPath);
   const rawAlerts = await readJSON(rawAlertsPath);

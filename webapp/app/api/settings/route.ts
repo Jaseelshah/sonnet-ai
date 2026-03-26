@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
 import { ROOT } from "@/lib/data";
+import { validateOrigin } from "@/lib/csrf";
+import { verifyToken, COOKIE_NAME } from "@/lib/auth";
+import { audit, getClientIP } from "@/lib/audit";
 
 const ENV_PATH = path.join(ROOT, ".env");
 
@@ -74,6 +77,25 @@ export async function POST(request: NextRequest) {
   // matching X-API-Key header. If the env var is absent (development mode) the
   // check is skipped and a warning is logged to the server console.
   // ---------------------------------------------------------------------------
+  const csrfError = validateOrigin(request);
+  if (csrfError) return csrfError;
+
+  // ---------------------------------------------------------------------------
+  // RBAC: only admin-role users may modify settings.
+  // ---------------------------------------------------------------------------
+  const sessionToken = request.cookies.get(COOKIE_NAME)?.value;
+  const sessionUser = sessionToken ? await verifyToken(sessionToken) : null;
+  if (sessionUser && sessionUser.role !== "admin") {
+    await audit({
+      action: "settings_update",
+      user: sessionUser.email,
+      ip: getClientIP(request),
+      outcome: "denied",
+      details: "non-admin role",
+    });
+    return NextResponse.json({ error: "Forbidden: admin access required" }, { status: 403 });
+  }
+
   const expectedKey = process.env.SETTINGS_API_KEY;
   if (expectedKey) {
     const providedKey = request.headers.get("X-API-Key");
@@ -86,88 +108,118 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const body = await request.json();
-  const currentVars = await parseEnv();
+  let body: Record<string, any>;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
 
-  // Map settings back to env vars
+  // Build a map of env var updates from the request body.
+  // Only keys explicitly supported by the settings UI are touched — all other
+  // env vars (CROWN_JEWELS, TENANTS, JWT_SECRET, ELASTIC_*, DASHBOARD_*, etc.)
+  // are preserved verbatim from the existing .env file.
   const updates: Record<string, string> = {};
 
   if (body.anthropic) {
     if (body.anthropic.model) updates.ANTHROPIC_MODEL = body.anthropic.model;
-    if (body.anthropic.max_tokens) updates.ANTHROPIC_MAX_TOKENS = String(body.anthropic.max_tokens);
-    if (body.anthropic.api_key && !body.anthropic.api_key.includes("****")) {
-      updates.ANTHROPIC_API_KEY = body.anthropic.api_key;
-    }
+    if (body.anthropic.max_tokens != null) updates.ANTHROPIC_MAX_TOKENS = String(body.anthropic.max_tokens);
+    if (body.anthropic.api_key != null) updates.ANTHROPIC_API_KEY = body.anthropic.api_key;
   }
   if (body.slack) {
-    updates.SLACK_ENABLED = String(body.slack.enabled);
-    if (body.slack.webhook_url !== undefined && !body.slack.webhook_url.includes("****")) {
-      updates.SLACK_WEBHOOK_URL = body.slack.webhook_url;
-    }
+    updates.SLACK_ENABLED = body.slack.enabled ? "true" : "false";
+    if (body.slack.webhook_url != null) updates.SLACK_WEBHOOK_URL = body.slack.webhook_url;
   }
   if (body.jira) {
-    updates.JIRA_ENABLED = String(body.jira.enabled);
-    if (body.jira.url !== undefined) updates.JIRA_URL = body.jira.url;
-    if (body.jira.email !== undefined) updates.JIRA_EMAIL = body.jira.email;
-    if (body.jira.project_key !== undefined) updates.JIRA_PROJECT_KEY = body.jira.project_key;
-    if (body.jira.api_token && !body.jira.api_token.includes("****")) {
-      updates.JIRA_API_TOKEN = body.jira.api_token;
-    }
+    updates.JIRA_ENABLED = body.jira.enabled ? "true" : "false";
+    if (body.jira.url != null) updates.JIRA_URL = body.jira.url;
+    if (body.jira.email != null) updates.JIRA_EMAIL = body.jira.email;
+    if (body.jira.api_token != null) updates.JIRA_API_TOKEN = body.jira.api_token;
+    if (body.jira.project_key != null) updates.JIRA_PROJECT_KEY = body.jira.project_key;
   }
   if (body.virustotal) {
-    updates.VIRUSTOTAL_ENABLED = String(body.virustotal.enabled);
-    if (body.virustotal.api_key && !body.virustotal.api_key.includes("****")) {
-      updates.VIRUSTOTAL_API_KEY = body.virustotal.api_key;
-    }
+    updates.VIRUSTOTAL_ENABLED = body.virustotal.enabled ? "true" : "false";
+    if (body.virustotal.api_key != null) updates.VIRUSTOTAL_API_KEY = body.virustotal.api_key;
   }
   if (body.triage) {
-    if (body.triage.false_positive_threshold !== undefined) {
-      updates.FALSE_POSITIVE_THRESHOLD = String(body.triage.false_positive_threshold);
-    }
+    if (body.triage.false_positive_threshold != null) updates.FALSE_POSITIVE_THRESHOLD = String(body.triage.false_positive_threshold);
     if (body.triage.log_level) updates.LOG_LEVEL = body.triage.log_level;
   }
   if (body.autonomy) {
-    updates.AUTO_RESPONSE_ENABLED = String(body.autonomy.enabled);
-    if (body.autonomy.threshold !== undefined) {
-      updates.AUTONOMY_THRESHOLD = String(body.autonomy.threshold);
+    updates.AUTO_RESPONSE_ENABLED = body.autonomy.enabled ? "true" : "false";
+    if (body.autonomy.threshold != null) updates.AUTONOMY_THRESHOLD = String(body.autonomy.threshold);
+  }
+
+  // Input validation: reject any value containing newlines, carriage returns, or null bytes.
+  // These characters would corrupt the .env file format or enable injection attacks.
+  for (const [key, value] of Object.entries(updates)) {
+    if (/[\n\r\0]/.test(value)) {
+      return NextResponse.json(
+        { error: `Invalid value for ${key}: contains forbidden characters` },
+        { status: 400 }
+      );
+    }
+    // Drop masked values — the UI sends "****xxxx" placeholders for secrets
+    // it never loaded. Writing them back would overwrite the real secret.
+    if (value.includes("****")) {
+      delete updates[key];
     }
   }
 
-  const merged = { ...currentVars, ...updates };
+  // Read the existing .env line-by-line, preserving comments, blank lines, and
+  // all keys not touched by this request. Only replace the specific keys that
+  // appeared in the request body.
+  let existingLines: string[] = [];
+  try {
+    const raw = await fs.readFile(ENV_PATH, "utf-8");
+    existingLines = raw.split("\n");
+  } catch {
+    existingLines = [];
+  }
 
-  // Write .env file
-  const lines = [
-    "# Anthropic API",
-    `ANTHROPIC_API_KEY=${merged.ANTHROPIC_API_KEY ?? ""}`,
-    `ANTHROPIC_MODEL=${merged.ANTHROPIC_MODEL ?? "claude-sonnet-4-20250514"}`,
-    `ANTHROPIC_MAX_TOKENS=${merged.ANTHROPIC_MAX_TOKENS ?? "1024"}`,
-    "",
-    "# Slack Integration",
-    `SLACK_ENABLED=${merged.SLACK_ENABLED ?? "false"}`,
-    `SLACK_WEBHOOK_URL=${merged.SLACK_WEBHOOK_URL ?? ""}`,
-    "",
-    "# Jira Integration",
-    `JIRA_ENABLED=${merged.JIRA_ENABLED ?? "false"}`,
-    `JIRA_URL=${merged.JIRA_URL ?? ""}`,
-    `JIRA_EMAIL=${merged.JIRA_EMAIL ?? ""}`,
-    `JIRA_API_TOKEN=${merged.JIRA_API_TOKEN ?? ""}`,
-    `JIRA_PROJECT_KEY=${merged.JIRA_PROJECT_KEY ?? ""}`,
-    "",
-    "# VirusTotal Enrichment",
-    `VIRUSTOTAL_ENABLED=${merged.VIRUSTOTAL_ENABLED ?? "false"}`,
-    `VIRUSTOTAL_API_KEY=${merged.VIRUSTOTAL_API_KEY ?? ""}`,
-    "",
-    "# Triage Tuning",
-    `FALSE_POSITIVE_THRESHOLD=${merged.FALSE_POSITIVE_THRESHOLD ?? "0.7"}`,
-    `LOG_LEVEL=${merged.LOG_LEVEL ?? "INFO"}`,
-    "",
-    "# Autonomous Response",
-    `AUTO_RESPONSE_ENABLED=${merged.AUTO_RESPONSE_ENABLED ?? "false"}`,
-    `AUTONOMY_THRESHOLD=${merged.AUTONOMY_THRESHOLD ?? "0.95"}`,
-    "",
-  ];
+  const updatedKeys = new Set<string>();
+  const outputLines: string[] = [];
 
-  await fs.writeFile(ENV_PATH, lines.join("\n"), "utf-8");
+  for (const line of existingLines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) {
+      outputLines.push(line);
+      continue;
+    }
+    const eqIdx = trimmed.indexOf("=");
+    if (eqIdx === -1) {
+      outputLines.push(line);
+      continue;
+    }
+    const key = trimmed.substring(0, eqIdx).trim();
+    if (key in updates) {
+      outputLines.push(`${key}=${updates[key]}`);
+      updatedKeys.add(key);
+    } else {
+      outputLines.push(line); // Preserve original line exactly
+    }
+  }
+
+  // Append any keys from the request that were not already present in the file.
+  for (const [key, value] of Object.entries(updates)) {
+    if (!updatedKeys.has(key)) {
+      outputLines.push(`${key}=${value}`);
+    }
+  }
+
+  // Atomic write: write to a .tmp file then rename so readers never see a
+  // partially-written file.
+  const tmpPath = ENV_PATH + ".tmp";
+  await fs.writeFile(tmpPath, outputLines.join("\n"), "utf-8");
+  await fs.rename(tmpPath, ENV_PATH);
+
+  await audit({
+    action: "settings_update",
+    user: sessionUser?.email || "unknown",
+    ip: getClientIP(request),
+    outcome: "success",
+    details: Object.keys(updates).join(", "),
+  });
 
   return NextResponse.json({ success: true });
 }

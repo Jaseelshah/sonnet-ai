@@ -85,6 +85,34 @@ _INTERNAL_SUFFIXES = frozenset({
 })
 
 
+def _validate_ioc(value: str, ioc_type: str) -> bool:
+    """Validate an IOC value before querying VirusTotal.
+
+    Rejects empty values, oversized strings, path traversal sequences,
+    null bytes, and values that do not match the expected type pattern.
+    """
+    if not value or len(value) > 256:
+        return False
+    # Reject path traversal attempts
+    if ".." in value or "/" in value or "\\" in value:
+        return False
+    # Reject null bytes
+    if "\x00" in value:
+        return False
+    # Type-specific validation against the same compiled patterns used for extraction
+    if ioc_type == "ip":
+        return bool(_IPV4_RE.fullmatch(value))
+    if ioc_type == "domain":
+        return bool(_DOMAIN_RE.fullmatch(value))
+    if ioc_type == "hash":
+        return bool(
+            _SHA256_RE.fullmatch(value)
+            or _SHA1_RE.fullmatch(value)
+            or _MD5_RE.fullmatch(value)
+        )
+    return False
+
+
 # ── Data classes ─────────────────────────────────────────────────────────────
 @dataclass
 class EnrichmentResult:
@@ -283,6 +311,9 @@ def _parse_analysis_stats(
 
 
 def _lookup_ip(ip: str) -> EnrichmentResult:
+    if not _validate_ioc(ip, "ip"):
+        logger.warning("Invalid IOC rejected: %s", ip)
+        return EnrichmentResult(ioc_value=ip, ioc_type="ip")
     data = _vt_request(f"ip_addresses/{ip}")
     if data is None:
         return EnrichmentResult(ioc_value=ip, ioc_type="ip")
@@ -290,6 +321,9 @@ def _lookup_ip(ip: str) -> EnrichmentResult:
 
 
 def _lookup_domain(domain: str) -> EnrichmentResult:
+    if not _validate_ioc(domain, "domain"):
+        logger.warning("Invalid IOC rejected: %s", domain)
+        return EnrichmentResult(ioc_value=domain, ioc_type="domain")
     data = _vt_request(f"domains/{domain}")
     if data is None:
         return EnrichmentResult(ioc_value=domain, ioc_type="domain")
@@ -297,6 +331,9 @@ def _lookup_domain(domain: str) -> EnrichmentResult:
 
 
 def _lookup_hash(file_hash: str) -> EnrichmentResult:
+    if not _validate_ioc(file_hash, "hash"):
+        logger.warning("Invalid IOC rejected: %s", file_hash)
+        return EnrichmentResult(ioc_value=file_hash, ioc_type="hash")
     data = _vt_request(f"files/{file_hash}")
     if data is None:
         return EnrichmentResult(ioc_value=file_hash, ioc_type="hash")

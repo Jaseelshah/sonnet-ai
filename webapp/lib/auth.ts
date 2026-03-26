@@ -1,17 +1,19 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "fallback-secret-change-me"
-);
+const JWT_SECRET_RAW = process.env.JWT_SECRET;
+if (!JWT_SECRET_RAW) {
+  console.error("FATAL: JWT_SECRET environment variable is required. Set it in .env.local");
+}
+const JWT_SECRET = new TextEncoder().encode(JWT_SECRET_RAW || "");
 const COOKIE_NAME = "sonnet-ai-token";
 const TOKEN_EXPIRY = "8h";
 
 /**
- * Creates a signed JWT for the given email address.
+ * Creates a signed JWT for the given email address and role.
  */
-export async function createToken(email: string): Promise<string> {
-  return new SignJWT({ email })
+export async function createToken(email: string, role: string): Promise<string> {
+  return new SignJWT({ email, role })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(TOKEN_EXPIRY)
@@ -23,10 +25,10 @@ export async function createToken(email: string): Promise<string> {
  */
 export async function verifyToken(
   token: string
-): Promise<{ email: string } | null> {
+): Promise<{ email: string; role: string } | null> {
   try {
     const { payload } = await jwtVerify(token, JWT_SECRET);
-    return payload as { email: string };
+    return payload as { email: string; role: string };
   } catch {
     return null;
   }

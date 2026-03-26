@@ -5,7 +5,7 @@ Structured triage result returned by the SOC triage agent.
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 
@@ -30,6 +30,7 @@ class TriageResult:
     recommended_actions: list[str]
     escalate: bool
     false_positive_likelihood: float  # 0.0 – 1.0
+    essential_eight_controls: list[str] = field(default_factory=list)
     tenant_id: str = ""
     triaged_at: datetime | None = None
 
@@ -62,6 +63,7 @@ class TriageResult:
             recommended_actions=data.get("recommended_actions", []),
             escalate=bool(data.get("escalate", False)),
             false_positive_likelihood=float(data.get("false_positive_likelihood", 0.0)),
+            essential_eight_controls=data.get("essential_eight_controls", []),
             tenant_id=data.get("tenant_id", ""),
         )
 

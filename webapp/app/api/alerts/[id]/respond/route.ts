@@ -3,6 +3,8 @@ import path from "path";
 import { NextRequest, NextResponse } from "next/server";
 import { readJSON, responseActionsPath, triageResultsPath } from "@/lib/data";
 import { ResponseAction, ResponseActionEntry, TriageResult } from "@/lib/types";
+import { validateOrigin } from "@/lib/csrf";
+import { audit, getClientIP } from "@/lib/audit";
 
 const VALID_ACTIONS: ResponseAction[] = [
   "isolate_host",
@@ -49,6 +51,9 @@ export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const csrfError = validateOrigin(req);
+  if (csrfError) return csrfError;
+
   let body: { action?: unknown };
   try {
     body = await req.json();
@@ -98,6 +103,14 @@ export async function POST(
   await fs.mkdir(path.dirname(responseActionsPath), { recursive: true });
   await fs.writeFile(tmpPath, JSON.stringify(updated, null, 2), "utf-8");
   await fs.rename(tmpPath, responseActionsPath);
+
+  await audit({
+    action: "response_action",
+    user: "analyst",
+    ip: getClientIP(req),
+    outcome: "success",
+    details: `alert=${params.id} action=${action as string}`,
+  });
 
   return NextResponse.json({ success: true, action: entry }, { status: 201 });
 }

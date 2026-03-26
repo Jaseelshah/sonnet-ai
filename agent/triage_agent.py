@@ -11,8 +11,10 @@ from typing import Any
 import anthropic
 
 from agent.corrections import load_relevant_corrections
+from enrichment.essential_eight import map_to_essential_eight
 from agent.prompt import SYSTEM_PROMPT, build_user_prompt
-from config.settings import ANTHROPIC_API_KEY, ANTHROPIC_MAX_TOKENS, ANTHROPIC_MODEL, CROWN_JEWELS
+from config.settings import ANTHROPIC_API_KEY, ANTHROPIC_MAX_TOKENS, ANTHROPIC_MODEL, CROWN_JEWELS, PRIVACY_MODE
+from enrichment.privacy import redact_pii
 from models.alert import Alert
 from models.triage import Priority, TriageResult
 
@@ -44,8 +46,9 @@ class TriageAgent:
             alert_source=alert.source,
             mitre_tactic="",  # tactic unknown pre-triage; source alone drives relevance
         )
+        prompt_alert = redact_pii(alert) if PRIVACY_MODE else alert
         user_prompt = build_user_prompt(
-            alert.to_prompt_context(), enrichment_context, corrections_context
+            prompt_alert.to_prompt_context(), enrichment_context, corrections_context
         )
         raw_response = self._call_api(user_prompt)
         result = self._parse_response(raw_response, alert.id)
@@ -53,6 +56,11 @@ class TriageAgent:
         # Crown Jewel escalation
         if CROWN_JEWELS and alert.hostname.upper() in CROWN_JEWELS:
             result = self._apply_crown_jewel_escalation(result, alert.hostname)
+
+        # Essential Eight mapping (deterministic — no LLM involvement)
+        result.essential_eight_controls = map_to_essential_eight(
+            result.mitre_technique, result.mitre_tactic
+        )
 
         logger.info(
             "Alert %s triaged → %s (confidence %.0f%%, escalate=%s)",

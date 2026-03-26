@@ -3,6 +3,8 @@ import path from "path";
 import { NextRequest, NextResponse } from "next/server";
 import { readJSON, feedbackPath, correctionsPath, triageResultsPath, rawAlertsPath } from "@/lib/data";
 import { AlertFeedback, FeedbackStatus, Priority, TriageResult } from "@/lib/types";
+import { validateOrigin } from "@/lib/csrf";
+import { audit, getClientIP } from "@/lib/audit";
 
 // ---------------------------------------------------------------------------
 // GET /api/alerts/[id]/feedback
@@ -26,6 +28,9 @@ export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const csrfError = validateOrigin(req);
+  if (csrfError) return csrfError;
+
   const body = (await req.json()) as {
     status: FeedbackStatus;
     corrected_priority?: string;
@@ -120,6 +125,14 @@ export async function POST(
       console.error("[feedback] Failed to write corrections.json:", err);
     }
   }
+
+  await audit({
+    action: "feedback_submitted",
+    user: "analyst",
+    ip: getClientIP(req),
+    outcome: "success",
+    details: `alert=${params.id} status=${body.status}`,
+  });
 
   return NextResponse.json({ success: true, feedback: entry });
 }

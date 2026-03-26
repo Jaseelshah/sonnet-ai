@@ -57,6 +57,13 @@ ESCALATION_PRIORITIES: set[str] = {"CRITICAL", "HIGH"}
 FALSE_POSITIVE_THRESHOLD: float = float(os.getenv("FALSE_POSITIVE_THRESHOLD", "0.7"))
 ESCALATION_CONFIDENCE_THRESHOLD: float = float(os.getenv("ESCALATION_CONFIDENCE_THRESHOLD", "0.6"))
 
+# ── Autonomy ──────────────────────────────────────────────────────────────
+AUTONOMY_THRESHOLD: float = float(os.getenv("AUTONOMY_THRESHOLD", "0.95"))
+AUTO_RESPONSE_ENABLED: bool = os.getenv("AUTO_RESPONSE_ENABLED", "false").lower() == "true"
+
+# ── Privacy ──────────────────────────────────────────────────────────────────
+PRIVACY_MODE: bool = os.getenv("PRIVACY_MODE", "false").lower() == "true"
+
 # ── Logging ──────────────────────────────────────────────────────────────────
 LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
 LOG_FORMAT: str = "%(asctime)s | %(name)-20s | %(levelname)-8s | %(message)s"
