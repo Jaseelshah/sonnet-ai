@@ -32,6 +32,7 @@ logs/*.tmp
 webapp/node_modules/
 webapp/.next/
 webapp/out/
+webapp/tsconfig.tsbuildinfo
 
 # OS
 .DS_Store
